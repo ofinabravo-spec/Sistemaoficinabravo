@@ -6,7 +6,6 @@
 <title>Cadastro de Clientes</title>
 
 <style>
-
 *{
 margin:0;
 padding:0;
@@ -36,8 +35,7 @@ h1{
 margin-bottom:15px;
 }
 
-input,textarea{
-width:100%;
+input,textarea{\nwidth:100%;
 padding:12px;
 margin-bottom:10px;
 border:1px solid #ccc;
@@ -55,280 +53,222 @@ border:none;
 border-radius:6px;
 cursor:pointer;
 margin-right:5px;
+font-weight:bold;
 }
 
-.salvar{
-background:#2563eb;
-color:white;
-}
-
-.voltar{
-background:#6b7280;
-color:white;
-margin-bottom:15px;
-}
-
-.editar{
-background:#f59e0b;
-color:white;
-}
-
-.excluir{
-background:#dc2626;
-color:white;
-}
-
-.whats{
-background:#16a34a;
-color:white;
-}
+.btn-salvar { background: #16a34a; color: white; }
+.btn-limpar { background: #9ca3af; color: white; }
+.btn-voltar { background: #374151; color: white; margin-bottom: 20px; width: 100%; padding: 12px; text-align: center; display: block; text-decoration: none; border-radius: 6px; }
 
 .cliente{
-background:#f9fafb;
-border:1px solid #e5e7eb;
+background:white;
 padding:15px;
 border-radius:8px;
-margin-top:10px;
+margin-bottom:10px;
+box-shadow:0 1px 4px rgba(0,0,0,.05);
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
 .info{
-margin-bottom:10px;
+line-height:1.6;
 }
 
-.busca{
-margin-top:10px;
+.acoes button{
+padding:6px 10px;
+font-size:12px;
 }
 
+.btn-edit { background: #3b82f6; color: white; }
+.btn-excluir { background: #dc2626; color: white; }
+.btn-whats { background: #25d366; color: white; }
+
+.loading {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 20px;
+}
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
-<button class="voltar" onclick="history.back()">
-⬅️ Voltar
-</button>
+<a href="index.html" class="btn-voltar">⬅️ Voltar ao Dashboard</a>
 
 <div class="card">
-
-<h1>👥 Cadastro de Clientes</h1>
-
-<input type="text" id="nome" placeholder="Nome do Cliente">
-
-<input type="text" id="telefone" placeholder="Telefone">
-
-<input type="text" id="whatsapp" placeholder="WhatsApp">
-
-<input type="text" id="veiculo" placeholder="Veículo">
-
-<input type="text" id="placa" placeholder="Placa">
-
-<textarea id="obs" placeholder="Observações"></textarea>
-
-<button class="salvar" onclick="salvarCliente()">
-💾 Salvar Cliente
-</button>
-
+    <h1 id="tituloForm">👤 Cadastro de Cliente</h1>
+    <input id="nome" placeholder="Nome Completo *">
+    <input id="telefone" placeholder="Telefone">
+    <input id="whatsapp" placeholder="WhatsApp (Apenas números)">
+    <input id="veiculo" placeholder="Veículo (Moto/Modelo)">
+    <input id="placa" placeholder="Placa *">
+    <textarea id="obs" placeholder="Observações importantes..."></textarea>
+    
+    <button class="btn-salvar" onclick="salvarCliente()">💾 Salvar na Nuvem</button>
+    <button class="btn-limpar" onclick="limparFormulario()">🧹 Limpar</button>
 </div>
 
 <div class="card">
-
-<h2>🔍 Pesquisar Cliente</h2>
-
-<input
-class="busca"
-type="text"
-id="pesquisa"
-placeholder="Digite nome, telefone ou placa..."
-onkeyup="listarClientes()">
-
-</div>
-
-<div class="card">
-
-<h2>📋 Clientes Cadastrados</h2>
-
-<div id="listaClientes"></div>
-
+    <h2>🔎 Buscar Clientes Salvos</h2>
+    <input id="pesquisa" placeholder="Digite o nome ou placa para filtrar..." oninput="listarClientes()">
+    <div id="listaClientes">
+        <p class="loading">Carregando dados da nuvem...</p>
+    </div>
 </div>
 
 </div>
 
 <script>
+const API_URL = "https://sheetdb.io/api/v1/550s3xju33qqi";
+let clientes = [];
+let editando = null;
 
-let clientes =
-JSON.parse(localStorage.getItem("clientesOficina")) || []
-
-let editando = -1
-
-function salvarBanco(){
-localStorage.setItem(
-"clientesOficina",
-JSON.stringify(clientes)
-)
+// Carrega os clientes direto do Google Planilhas
+function carregarClientes() {
+    document.getElementById("listaClientes").innerHTML = '<p class="loading">Atualizando lista da nuvem...</p>';
+    fetch(API_URL)
+        .then(res => res.json())
+        .then(data => {
+            // Mapeia garantindo que as propriedades existam
+            clientes = data.map(c => ({
+                nome: c.nome || "",
+                telefone: c.telefone || "",
+                whatsapp: c.whatsapp || "",
+                veiculo: c.veiculo || "",
+                placa: c.placa || "",
+                obs: c.obs || ""
+            }));
+            listarClientes();
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById("listaClientes").innerHTML = '<p class="loading" style="color:red;">Erro ao carregar dados.</p>';
+        });
 }
 
-function salvarCliente(){
+function listarClientes() {
+    const filtro = document.getElementById("pesquisa").value.toLowerCase();
+    let html = "";
+    
+    clientes.forEach((c, i) => {
+        const texto = (c.nome + c.telefone + c.placa).toLowerCase();
+        if(!texto.includes(filtro)) return;
 
-const cliente = {
+        html += `
+        <div class="cliente">
+            <div class="info">
+                <strong>👤 ${c.nome}</strong><br>
+                📞 ${c.telefone || "-"}<br>
+                💬 ${c.whatsapp || "-"}<br>
+                🏍️ ${c.veiculo || "-"} | 🪪 <strong>${c.placa}</strong><br>
+                📝 <small>${c.obs || "Sem observações"}</small>
+            </div>
+            <div class="acoes">
+                ${c.whatsapp ? `<button class="btn-whats" onclick="abrirWhats('${c.whatsapp}')">💬 WhatsApp</button>` : ''}
+                <button class="btn-edit" onclick="editarCliente(${i})">✏️ Editar</button>
+                <button class="btn-excluir" onclick="excluirCliente(${i})">❌ Excluir</button>
+            </div>
+        </div>`;
+    });
 
-nome:document.getElementById("nome").value.trim(),
-telefone:document.getElementById("telefone").value.trim(),
-whatsapp:document.getElementById("whatsapp").value.trim(),
-veiculo:document.getElementById("veiculo").value.trim(),
-placa:document.getElementById("placa").value.trim(),
-obs:document.getElementById("obs").value.trim()
-
+    document.getElementById("listaClientes").innerHTML = html || "<p class='loading'>Nenhum cliente encontrado.</p>";
 }
 
-if(!cliente.nome){
-alert("Informe o nome do cliente.")
-return
+function salvarCliente() {
+    const nome = document.getElementById("nome").value.trim();
+    const telefone = document.getElementById("telefone").value.trim();
+    const whatsapp = document.getElementById("whatsapp").value.trim();
+    const veiculo = document.getElementById("veiculo").value.trim();
+    const placa = document.getElementById("placa").value.trim().toUpperCase();
+    const obs = document.getElementById("obs").value.trim();
+
+    if(!nome || !placa) {
+        alert("Por favor, preencha o Nome e a Placa!");
+        return;
+    }
+
+    const dadosCliente = { nome, telefone, whatsapp, veiculo, placa, obs };
+
+    if(editando !== null) {
+        // Para editar no SheetDB de forma simples: Deletamos o registro pela placa antiga e inserimos o novo
+        const placaAntiga = clientes[editando].placa;
+        document.getElementById("listaClientes").innerHTML = '<p class="loading">Salvando alterações...</p>';
+        
+        fetch(`${API_URL}/placa/${placaAntiga}`, { method: 'DELETE' })
+            .then(() => enviarParaNuvem(dadosCliente))
+            .catch(() => alert("Erro ao atualizar dados antigos."));
+    } else {
+        enviarParaNuvem(dadosCliente);
+    }
 }
 
-if(editando >= 0){
-
-clientes[editando] = cliente
-editando = -1
-
-}else{
-
-clientes.push(cliente)
-
+function enviarParaNuvem(dados) {
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [dados] })
+    })
+    .then(res => res.json())
+    .then(() => {
+        alert("Dados salvos com sucesso na nuvem!");
+        limparFormulario();
+        editando = null;
+        document.getElementById("tituloForm").innerText = "👤 Cadastro de Cliente";
+        carregaClientes();
+    })
+    .catch(err => alert("Erro ao enviar para a nuvem: " + err));
 }
 
-salvarBanco()
+function editarCliente(i) {
+    const c = clientes[i];
+    document.getElementById("nome").value = c.nome;
+    document.getElementById("telefone").value = c.telefone;
+    document.getElementById("whatsapp").value = c.whatsapp;
+    document.getElementById("veiculo").value = c.veiculo;
+    document.getElementById("placa").value = c.placa;
+    document.getElementById("obs").value = c.obs;
 
-limparCampos()
-
-listarClientes()
-
+    editando = i;
+    document.getElementById("tituloForm").innerText = "✏️ Editando Cliente";
+    window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function limparCampos(){
-
-document.getElementById("nome").value=""
-document.getElementById("telefone").value=""
-document.getElementById("whatsapp").value=""
-document.getElementById("veiculo").value=""
-document.getElementById("placa").value=""
-document.getElementById("obs").value=""
-
+function excluirCliente(i) {
+    if(confirm("Tem certeza que deseja apagar este cliente da nuvem? Todos verão essa mudança.")) {
+        const placaCliente = clientes[i].placa;
+        document.getElementById("listaClientes").innerHTML = '<p class="loading">Excluindo da nuvem...</p>';
+        
+        fetch(`${API_URL}/placa/${placaCliente}`, { method: 'DELETE' })
+            .then(() => {
+                alert("Cliente excluído!");
+                carregaClientes();
+            })
+            .catch(err => alert("Erro ao excluir: " + err));
+    }
 }
 
-function editarCliente(i){
-
-const c = clientes[i]
-
-document.getElementById("nome").value = c.nome
-document.getElementById("telefone").value = c.telefone
-document.getElementById("whatsapp").value = c.whatsapp
-document.getElementById("veiculo").value = c.veiculo
-document.getElementById("placa").value = c.placa
-document.getElementById("obs").value = c.obs
-
-editando = i
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-})
-
+function abrirWhats(numero) {
+    numero = numero.replace(/\D/g,'');
+    window.open("https://wa.me/55" + numero, "_blank");
 }
 
-function excluirCliente(i){
-
-if(confirm("Deseja excluir este cliente?")){
-
-clientes.splice(i,1)
-
-salvarBanco()
-
-listarClientes()
-
+function limparFormulario() {
+    document.getElementById("nome").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("whatsapp").value = "";
+    document.getElementById("veiculo").value = "";
+    document.getElementById("placa").value = "";
+    document.getElementById("obs").value = "";
+    editando = null;
+    document.getElementById("tituloForm").innerText = "👤 Cadastro de Cliente";
 }
 
-}
-
-function abrirWhats(numero){
-
-numero = numero.replace(/\D/g,'')
-
-window.open(
-"https://wa.me/55"+numero,
-"_blank"
-)
-
-}
-
-function listarClientes(){
-
-const filtro =
-document.getElementById("pesquisa")
-.value
-.toLowerCase()
-
-let html = ""
-
-clientes.forEach((c,i)=>{
-
-const texto =
-(c.nome + c.telefone + c.placa)
-.toLowerCase()
-
-if(!texto.includes(filtro)) return
-
-html += `
-
-<div class="cliente">
-
-<div class="info">
-
-<strong>👤 ${c.nome}</strong><br>
-
-📞 ${c.telefone || "-"}<br>
-
-💬 ${c.whatsapp || "-"}<br>
-
-🚗 ${c.veiculo || "-"}<br>
-
-🔖 ${c.placa || "-"}<br>
-
-📝 ${c.obs || "-"}
-
-</div>
-
-<button
-class="editar"
-onclick="editarCliente(${i})">
-✏️ Editar
-</button>
-
-<button
-class="excluir"
-onclick="excluirCliente(${i})">
-🗑️ Excluir
-</button>
-
-<button
-class="whats"
-onclick="abrirWhats('${c.whatsapp}')">
-💬 WhatsApp
-</button>
-
-</div>
-
-`
-
-})
-
-document.getElementById("listaClientes").innerHTML =
-html || "<p>Nenhum cliente encontrado.</p>"
-
-}
-
-listarClientes()
-
+// Inicializa carregando os dados do Google Sheets
+carregaClientes();
 </script>
 
 </body>
