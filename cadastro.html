@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cadastro de Clientes</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial,sans-serif;
+}
+
+body{
+background:#f0f2f5;
+padding:20px;
+}
+
+.container{
+max-width:1000px;
+margin:auto;
+}
+
+.card{
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+margin-bottom:20px;
+}
+
+h1{
+margin-bottom:15px;
+}
+
+input,textarea{
+width:100%;
+padding:12px;
+margin-bottom:10px;
+border:1px solid #ccc;
+border-radius:6px;
+}
+
+textarea{
+resize:vertical;
+height:80px;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+margin-right:5px;
+}
+
+.salvar{
+background:#2563eb;
+color:white;
+}
+
+.voltar{
+background:#6b7280;
+color:white;
+margin-bottom:15px;
+}
+
+.editar{
+background:#f59e0b;
+color:white;
+}
+
+.excluir{
+background:#dc2626;
+color:white;
+}
+
+.whats{
+background:#16a34a;
+color:white;
+}
+
+.cliente{
+background:#f9fafb;
+border:1px solid #e5e7eb;
+padding:15px;
+border-radius:8px;
+margin-top:10px;
+}
+
+.info{
+margin-bottom:10px;
+}
+
+.busca{
+margin-top:10px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<button class="voltar" onclick="history.back()">
+⬅️ Voltar
+</button>
+
+<div class="card">
+
+<h1>👥 Cadastro de Clientes</h1>
+
+<input type="text" id="nome" placeholder="Nome do Cliente">
+
+<input type="text" id="telefone" placeholder="Telefone">
+
+<input type="text" id="whatsapp" placeholder="WhatsApp">
+
+<input type="text" id="veiculo" placeholder="Veículo">
+
+<input type="text" id="placa" placeholder="Placa">
+
+<textarea id="obs" placeholder="Observações"></textarea>
+
+<button class="salvar" onclick="salvarCliente()">
+💾 Salvar Cliente
+</button>
+
+</div>
+
+<div class="card">
+
+<h2>🔍 Pesquisar Cliente</h2>
+
+<input
+class="busca"
+type="text"
+id="pesquisa"
+placeholder="Digite nome, telefone ou placa..."
+onkeyup="listarClientes()">
+
+</div>
+
+<div class="card">
+
+<h2>📋 Clientes Cadastrados</h2>
+
+<div id="listaClientes"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let clientes =
+JSON.parse(localStorage.getItem("clientesOficina")) || []
+
+let editando = -1
+
+function salvarBanco(){
+localStorage.setItem(
+"clientesOficina",
+JSON.stringify(clientes)
+)
+}
+
+function salvarCliente(){
+
+const cliente = {
+
+nome:document.getElementById("nome").value.trim(),
+telefone:document.getElementById("telefone").value.trim(),
+whatsapp:document.getElementById("whatsapp").value.trim(),
+veiculo:document.getElementById("veiculo").value.trim(),
+placa:document.getElementById("placa").value.trim(),
+obs:document.getElementById("obs").value.trim()
+
+}
+
+if(!cliente.nome){
+alert("Informe o nome do cliente.")
+return
+}
+
+if(editando >= 0){
+
+clientes[editando] = cliente
+editando = -1
+
+}else{
+
+clientes.push(cliente)
+
+}
+
+salvarBanco()
+
+limparCampos()
+
+listarClientes()
+
+}
+
+function limparCampos(){
+
+document.getElementById("nome").value=""
+document.getElementById("telefone").value=""
+document.getElementById("whatsapp").value=""
+document.getElementById("veiculo").value=""
+document.getElementById("placa").value=""
+document.getElementById("obs").value=""
+
+}
+
+function editarCliente(i){
+
+const c = clientes[i]
+
+document.getElementById("nome").value = c.nome
+document.getElementById("telefone").value = c.telefone
+document.getElementById("whatsapp").value = c.whatsapp
+document.getElementById("veiculo").value = c.veiculo
+document.getElementById("placa").value = c.placa
+document.getElementById("obs").value = c.obs
+
+editando = i
+
+window.scrollTo({
+top:0,
+behavior:"smooth"
+})
+
+}
+
+function excluirCliente(i){
+
+if(confirm("Deseja excluir este cliente?")){
+
+clientes.splice(i,1)
+
+salvarBanco()
+
+listarClientes()
+
+}
+
+}
+
+function abrirWhats(numero){
+
+numero = numero.replace(/\D/g,'')
+
+window.open(
+"https://wa.me/55"+numero,
+"_blank"
+)
+
+}
+
+function listarClientes(){
+
+const filtro =
+document.getElementById("pesquisa")
+.value
+.toLowerCase()
+
+let html = ""
+
+clientes.forEach((c,i)=>{
+
+const texto =
+(c.nome + c.telefone + c.placa)
+.toLowerCase()
+
+if(!texto.includes(filtro)) return
+
+html += `
+
+<div class="cliente">
+
+<div class="info">
+
+<strong>👤 ${c.nome}</strong><br>
+
+📞 ${c.telefone || "-"}<br>
+
+💬 ${c.whatsapp || "-"}<br>
+
+🚗 ${c.veiculo || "-"}<br>
+
+🔖 ${c.placa || "-"}<br>
+
+📝 ${c.obs || "-"}
+
+</div>
+
+<button
+class="editar"
+onclick="editarCliente(${i})">
+✏️ Editar
+</button>
+
+<button
+class="excluir"
+onclick="excluirCliente(${i})">
+🗑️ Excluir
+</button>
+
+<button
+class="whats"
+onclick="abrirWhats('${c.whatsapp}')">
+💬 WhatsApp
+</button>
+
+</div>
+
+`
+
+})
+
+document.getElementById("listaClientes").innerHTML =
+html || "<p>Nenhum cliente encontrado.</p>"
+
+}
+
+listarClientes()
+
+</script>
+
+</body>
+</html>

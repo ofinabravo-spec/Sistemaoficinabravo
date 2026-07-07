@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Oficina</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+    margin: 0;
+}
+
+.topo {
+    background: #222;
+    color: white;
+    padding: 10px;
+    text-align: center;
+}
+
+.topo button {
+    margin-top: 5px;
+    width: 100%;
+    padding: 8px;
+}
+
+.tela { display: none; padding: 20px; }
+.ativa { display: block; }
+
+.container {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 500px;
+    margin: auto;
+}
+
+input, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.relatorio {
+    background: #fff;
+    border-left: 5px solid green;
+    padding: 10px;
+    margin-top: 15px;
+}
+
+.btn-excluir {
+    background: red;
+    color: white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topo">
+    <h2>Oficina</h2>
+    <button onclick="abrirTela('cadastro')">Nova OS</button>
+    <button onclick="abrirTela('historico')">Histórico</button>
+    <button onclick="abrirTela('servicos')">Serviços</button>
+</div>
+<button class="btn-voltar" onclick="window.location.href='index.html'">
+⬅️ Voltar
+</button>
+
+<!-- CADASTRO -->
+<div id="cadastro" class="tela ativa">
+<div class="container">
+
+<button type="button" onclick="mostrarClientes()">
+👥 Cliente Cadastrado
+</button>
+
+<select id="clienteCadastrado"
+style="display:none;"
+onchange="selecionarCliente()">
+
+<option value="">
+Selecione um cliente
+</option>
+
+</select>
+
+<input id="cliente" placeholder="Cliente">
+
+<input id="moto" placeholder="Marca">
+
+<input id="modelo" placeholder="Modelo">
+
+<input id="km" type="number" placeholder="KM">
+
+<input list="listaServicosBase" id="servicoInput" placeholder="Serviço">
+<datalist id="listaServicosBase"></datalist>
+
+<button onclick="addServico()">Adicionar Serviço</button>
+
+<div id="listaServicos"></div>
+
+<input id="responsavel" placeholder="Responsável">
+<input id="garantia" type="number" placeholder="Garantia (dias)">
+<input id="valor" type="number" placeholder="Total" readonly>
+
+<button onclick="salvar()">Salvar</button>
+
+</div>
+</div>
+
+<!-- HISTÓRICO -->
+<div id="historico" class="tela">
+<div class="container">
+<h3>Histórico</h3>
+<div id="lista"></div>
+</div>
+</div>
+
+<!-- SERVIÇOS -->
+<div id="servicos" class="tela">
+<div class="container">
+
+<h3>Cadastro de Serviços</h3>
+
+<input id="novoServico" placeholder="Nome do serviço">
+<input id="precoServico" type="number" placeholder="Preço">
+
+<button onclick="salvarServico()">Adicionar</button>
+
+<div id="listaServicosSistema"></div>
+
+</div>
+</div>
+
+<script>
+let dados = JSON.parse(localStorage.getItem("oficina")) || [];
+let baseServicos = JSON.parse(localStorage.getItem("servicos")) || [];
+let servicosTemp = [];
+
+/* TELA */
+function abrirTela(t){
+document.querySelectorAll('.tela').forEach(x=>x.classList.remove('ativa'));
+document.getElementById(t).classList.add('ativa');
+
+if(t==="historico") mostrar();
+if(t==="servicos") listarServicosSistema();
+}
+
+/* SERVIÇOS BASE */
+function salvarServico(){
+let nome = novoServico.value;
+let preco = parseFloat(precoServico.value);
+
+if(nome && preco){
+baseServicos.push({nome, preco});
+localStorage.setItem("servicos", JSON.stringify(baseServicos));
+
+novoServico.value="";
+precoServico.value="";
+
+listarServicosSistema();
+atualizarAuto();
+}
+}
+
+function listarServicosSistema(){
+let div = document.getElementById("listaServicosSistema");
+div.innerHTML="";
+
+baseServicos.forEach((s,i)=>{
+div.innerHTML+=`
+<div>
+${s.nome} - R$ ${s.preco.toFixed(2)}
+<button onclick="excluirServico(${i})">X</button>
+</div>`;
+});
+}
+
+function excluirServico(i){
+baseServicos.splice(i,1);
+localStorage.setItem("servicos", JSON.stringify(baseServicos));
+listarServicosSistema();
+atualizarAuto();
+}
+
+function atualizarAuto(){
+let lista=document.getElementById("listaServicosBase");
+lista.innerHTML="";
+baseServicos.forEach(s=>{
+lista.innerHTML+=`<option value="${s.nome}">`;
+});
+}
+atualizarAuto();
+
+/* ADICIONAR SERVIÇO */
+function addServico(){
+let nome = document.getElementById("servicoInput").value;
+
+let s = baseServicos.find(x=>x.nome===nome);
+
+if(s){
+servicosTemp.push(s);
+}else{
+let precoManual = prompt("Digite o valor do serviço:");
+precoManual = parseFloat(precoManual) || 0;
+servicosTemp.push({nome:nome, preco:precoManual});
+}
+
+document.getElementById("servicoInput").value="";
+mostrarServicos();
+calcularTotal();
+}
+
+function mostrarServicos(){
+let div=document.getElementById("listaServicos");
+div.innerHTML="<b>Serviços:</b>";
+
+servicosTemp.forEach((s,i)=>{
+div.innerHTML+=`<div>${i+1} - ${s.nome} (R$ ${s.preco.toFixed(2)})</div>`;
+});
+}
+
+function calcularTotal(){
+let total = servicosTemp.reduce((soma,s)=>soma+s.preco,0);
+document.getElementById("valor").value = total.toFixed(2);
+}
+
+/* SALVAR */
+function salvar(){
+let item={
+cliente:cliente.value,
+moto:moto.value,
+modelo:modelo.value,
+km:km.value,
+servicos:servicosTemp,
+responsavel:responsavel.value,
+valor: parseFloat(document.getElementById("valor").value),
+garantia: parseInt(document.getElementById("garantia").value) || 0,
+data:new Date().toLocaleString()
+};
+
+dados.push(item);
+localStorage.setItem("oficina", JSON.stringify(dados));
+
+servicosTemp=[];
+cliente.value="";
+moto.value="";
+modelo.value="";
+km.value="";
+responsavel.value="";
+document.getElementById("garantia").value="";
+valor.value="";
+
+mostrarServicos();
+alert("Salvo!");
+}
+
+/* HISTÓRICO */
+function mostrar(){
+let lista=document.getElementById("lista");
+lista.innerHTML="";
+
+dados.forEach((item,i)=>{
+
+let serv=item.servicos.map(s=>`${s.nome} (R$ ${s.preco})`).join("<br>");
+
+lista.innerHTML+=`
+<div class="relatorio">
+<b>${item.cliente}</b><br>
+${item.moto} - ${item.modelo}<br>
+KM: ${item.km}<br><br>
+
+${serv}<br><br>
+
+Valor: R$ ${item.valor}<br>\nGarantia: ${item.garantia || 0} dias<br>
+
+<button onclick="imprimir(${i})">Imprimir</button>
+<button class="btn-excluir" onclick="excluir(${i})">Excluir</button>
+</div>`;
+});
+}
+
+/* IMPRIMIR */
+function imprimir(i){
+let item=dados[i];
+
+let serv=item.servicos.map(s=>`${s.nome} - R$ ${s.preco}`).join("<br>");
+
+let w=window.open('');
+w.document.write(`
+<body onload="window.print()">
+<h2>Comprovante</h2>
+${item.cliente}<br>
+${item.moto} - ${item.modelo}<br>
+KM: ${item.km}<br><br>
+${serv}<br><br>
+Garantia: ${item.garantia || 0} dias<br><br>\nTotal: R$ ${item.valor}
+</body>`);
+}
+
+/* EXCLUIR */
+function excluir(i){
+dados.splice(i,1);
+localStorage.setItem("oficina", JSON.stringify(dados));
+mostrar();
+}
+
+
+let clientesOficina =
+JSON.parse(localStorage.getItem("clientesOficina")) || [];
+
+function mostrarClientes(){
+
+const select =
+document.getElementById("clienteCadastrado");
+
+select.style.display = "block";
+
+select.innerHTML =
+'<option value="">Selecione um cliente</option>';
+
+clientesOficina.forEach((c,i)=>{
+
+select.innerHTML += `
+<option value="${i}">
+${c.nome}
+</option>
+`;
+
+});
+
+}
+
+function selecionarCliente(){
+
+const indice =
+document.getElementById("clienteCadastrado").value;
+
+if(indice === "") return;
+
+const clienteSelecionado =
+clientesOficina[indice];
+
+document.getElementById("cliente").value =
+clienteSelecionado.nome || "";
+
+if(clienteSelecionado.veiculo){
+document.getElementById("moto").value =
+clienteSelecionado.veiculo;
+}
+
+if(clienteSelecionado.placa){
+document.getElementById("modelo").value =
+clienteSelecionado.placa;
+}
+
+}
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Busca por Mecânico</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+}
+
+.container {
+    max-width: 700px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+input, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.card {
+    background: #eee;
+    padding: 10px;
+    margin-top: 10px;
+    border-left: 5px solid #333;
+}
+
+.total {
+    font-weight: bold;
+    color: green;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🔎 Buscar por Mecânico</h2>
+
+<button class="btn-voltar" onclick="history.back()">
+⬅️ Voltar
+</button>
+
+<input id="busca" placeholder="Digite nome do mecânico">
+<button onclick="buscar()">Pesquisar</button>
+
+<div id="resultado"></div>
+
+</div>
+
+<script>
+
+let dados = JSON.parse(localStorage.getItem("oficina")) || [];
+
+function buscar(){
+
+    let nome = document.getElementById("busca").value.toLowerCase();
+    let div = document.getElementById("resultado");
+
+    div.innerHTML = "";
+
+    let total = 0;
+    let encontrou = false;
+
+    dados.forEach(item=>{
+
+        if((item.responsavel || "").toLowerCase().includes(nome)){
+
+            encontrou = true;
+            total += Number(item.valor || 0);
+
+            let servicos = "";
+
+            if(item.servicos){
+                servicos = item.servicos.map(s =>
+                    typeof s === "object" ? `${s.nome} - R$ ${s.preco}` : s
+                ).join("<br>");
+            }
+
+            div.innerHTML += `
+            <div class="card">
+                <b>Cliente:</b> ${item.cliente}<br>
+                <b>Moto:</b> ${item.moto} - ${item.modelo}<br>
+                <b>KM:</b> ${item.km || "Não informado"}<br>
+                <b>Responsável:</b> ${item.responsavel}<br><br>
+
+                <b>Serviços:</b><br>
+                ${servicos}<br><br>
+
+                <b>Valor:</b> R$ ${item.valor}<br>
+                <small>${item.data}</small>
+            </div>
+            `;
+        }
+
+    });
+
+    if(!encontrou){
+        div.innerHTML = "<p>Nenhum registro encontrado.</p>";
+    } else {
+        div.innerHTML += `
+        <div class="card">
+            <h3 class="total">💰 Total do Mecânico: R$ ${total.toFixed(2)}</h3>
+        </div>
+        `;
+    }
+}
+
+</script>
+
+</body>
+</html>

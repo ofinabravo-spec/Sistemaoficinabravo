@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oficina Pro Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial;
+}
+
+body{
+display:flex;
+min-height:100vh;
+background:#f0f2f5;
+}
+
+/* MENU */
+nav{
+width:240px;
+background:#1f2937;
+padding:20px;
+display:flex;
+flex-direction:column;
+}
+
+nav h2{
+color:white;
+text-align:center;
+margin-bottom:20px;
+}
+
+nav a{
+color:white;
+text-decoration:none;
+background:#374151;
+padding:12px;
+margin-bottom:10px;
+border-radius:8px;
+text-align:center;
+}
+
+nav a:hover{
+background:#4b5563;
+}
+
+/* CONTEÚDO */
+main{
+flex:1;
+padding:20px;
+}
+
+.boxes{
+display:flex;
+flex-wrap:wrap;
+gap:15px;
+margin-bottom:20px;
+}
+
+.box{
+background:white;
+padding:15px;
+border-radius:10px;
+min-width:220px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.box h3{
+font-size:14px;
+color:#555;
+margin-bottom:5px;
+}
+
+.box p{
+font-size:20px;
+font-weight:bold;
+}
+
+.grafico{
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+margin-top:20px;
+}
+
+.section{
+background:white;
+padding:15px;
+border-radius:10px;
+margin-top:20px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.badge{
+display:inline-block;
+padding:5px 10px;
+border-radius:6px;
+background:#ef4444;
+color:white;
+font-size:12px;
+margin:2px;
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+<h2>🔧 Oficina Pro</h2>
+
+<a href="Registra nota.html">🧾 Nova OS</a>
+<a href="Fila%20de%20mecanicos.html">👨‍🔧 Fila Mecânicos</a>
+<a href="pesquisa.html">⚙️ Serviços</a>
+<a href="custos.html">💸 Custos</a>
+<a href="cadastro.html">👥 Cadastro</a>
+<a href="Controle_Financeiro_PRO_Notificacoes%20(1).html">🤑💼 Finaceiro</a>
+<a href="relatorio.html">👥 Relatório</a>
+<a href="triagem.html">    📋 Triagem e Horários</a>
+<a href="manuais%20teste.html">
+    📖 Manuais
+</a>
+
+
+</button>
+</nav>
+
+<main>
+
+<h1>📊 Oficina Bravo</h1>
+
+<div class="boxes">
+
+<div class="box">
+<h3>💰 Faturamento Total</h3>
+<p id="total">R$ 0,00</p>
+</div>
+
+<div class="box">
+<h3>💸 Despesas Totais</h3>
+<p id="despesas">R$ 0,00</p>
+</div>
+
+<div class="box">
+<h3>📊 Lucro Líquido</h3>
+<p id="lucro">R$ 0,00</p>
+</div>
+
+<div class="box">
+<h3>📅 Hoje</h3>
+<p id="hoje">R$ 0,00</p>
+</div>
+
+<div class="box">
+<h3>🧾 Ordens</h3>
+<p id="ordens">0</p>
+</div>
+
+<div class="box">
+<h3>⚠️ Revisões Pendentes</h3>
+<p id="alertas">0</p>
+</div>
+
+</div>
+
+<div class="grafico">
+<h3>📈 Faturamento Diário</h3>
+<canvas id="grafico"></canvas>
+</div>
+
+<div class="section">
+<h3>👨‍🔧 Faturamento por Mecânico</h3>
+<div id="mecanicos"></div>
+</div>
+
+<div class="section">
+<h3>🔥 Serviços Mais Usados</h3>
+<div id="servicosTop"></div>
+</div>
+
+<div class="section">
+<h3>🔁 Clientes para Retorno (1000km+)</h3>
+<div id="retorno"></div>
+</div>
+
+</main>
+
+<script>
+
+const fmt = v =>
+"R$ " + Number(v || 0).toLocaleString("pt-BR", {
+minimumFractionDigits:2
+})
+
+let dados =
+JSON.parse(localStorage.getItem("oficina")) || []
+
+let custos =
+JSON.parse(localStorage.getItem("custosGerais")) || []
+
+let total = 0
+let hojeTotal = 0
+let porDia = {}
+let ordens = dados.length
+
+let hojeStr =
+new Date().toISOString().slice(0,10)
+
+let mecanicos = {}
+let servicos = {}
+let retornoClientes = new Set()
+let alertas = 0
+
+dados.forEach((item,index)=>{
+
+let valor = Number(item.valor || 0)
+
+total += valor
+
+let data = (item.data || "").slice(0,10)
+
+if(!porDia[data]){
+porDia[data] = 0
+}
+
+porDia[data] += valor
+
+if(data === hojeStr){
+hojeTotal += valor
+}
+
+if(item.responsavel){
+
+if(!mecanicos[item.responsavel]){
+mecanicos[item.responsavel] = 0
+}
+
+mecanicos[item.responsavel] += valor
+}
+
+if(item.servicos){
+
+item.servicos.forEach(serv=>{
+
+servicos[serv] =
+(servicos[serv] || 0) + 1
+
+})
+
+}
+
+let anterior = dados
+.slice(0,index)
+.reverse()
+.find(d=>d.cliente === item.cliente)
+
+if(anterior && item.km && anterior.km){
+
+let rodado =
+Number(item.km) - Number(anterior.km)
+
+if(rodado >= 1000){
+
+retornoClientes.add(item.cliente)
+alertas++
+
+}
+
+}
+
+})
+
+/* DESPESAS */
+
+let despesasTotal = 0
+
+custos.forEach(c=>{
+
+despesasTotal +=
+Number(c.valor || 0)
+
+})
+
+let lucroLiquido =
+total - despesasTotal
+
+/* RESUMO */
+
+document.getElementById("total").innerText =
+fmt(total)
+
+document.getElementById("despesas").innerText =
+fmt(despesasTotal)
+
+document.getElementById("lucro").innerText =
+fmt(lucroLiquido)
+
+document.getElementById("hoje").innerText =
+fmt(hojeTotal)
+
+document.getElementById("ordens").innerText =
+ordens
+
+document.getElementById("alertas").innerText =
+alertas
+
+const lucroEl =
+document.getElementById("lucro")
+
+if(lucroLiquido >= 0){
+lucroEl.style.color = "#16a34a"
+}else{
+lucroEl.style.color = "#dc2626"
+}
+
+/* GRAFICO */
+
+let labels =
+Object.keys(porDia).sort()
+
+let valores =
+labels.map(d=>porDia[d])
+
+new Chart(
+document.getElementById("grafico"),
+{
+type:"bar",
+data:{
+labels:labels,
+datasets:[{
+label:"Faturamento Diário",
+data:valores
+}]
+}
+}
+)
+
+/* MECÂNICOS */
+
+let mecHTML = ""
+
+Object.entries(mecanicos)
+.forEach(([nome,val])=>{
+
+mecHTML += `
+<p>
+<b>${nome}</b> - ${fmt(val)}
+</p>
+`
+
+})
+
+document.getElementById("mecanicos").innerHTML =
+mecHTML || "Nenhum registro."
+
+/* SERVIÇOS */
+
+let servHTML = ""
+
+Object.entries(servicos)
+.sort((a,b)=>b[1]-a[1])
+.slice(0,5)
+.forEach(([nome,qtd])=>{
+
+servHTML += `
+<p>${nome} - ${qtd}x</p>
+`
+
+})
+
+document.getElementById("servicosTop").innerHTML =
+servHTML || "Nenhum serviço."
+
+/* RETORNO */
+
+let retornoHTML = ""
+
+retornoClientes.forEach(cliente=>{
+
+retornoHTML +=
+`<span class="badge">${cliente}</span>`
+
+})
+
+document.getElementById("retorno").innerHTML =
+retornoHTML || "Nenhum cliente ainda."
+
+</script>
+
+</body>
+</html>

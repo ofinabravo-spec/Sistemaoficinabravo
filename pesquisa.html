@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Planilha da Oficina</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #f4f4f4;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+input {
+    padding: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+th {
+    background: #222;
+    color: white;
+}
+
+.total {
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+button {
+    padding: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📊 Planilha de Serviços</h2>
+
+<button class="btn-voltar" onclick="window.location.href='index.html'">
+⬅️ Voltar
+</button>
+
+<input id="busca" placeholder="Buscar cliente, mecânico ou serviço">
+<input id="dataInicio" type="date">
+<input id="dataFim" type="date">
+
+<button onclick="filtrar()">Filtrar</button>
+
+<table>
+<thead>
+<tr>
+<th>Cliente</th>
+<th>Moto</th>
+<th>KM</th>
+<th>Serviços</th>
+<th>Mecânico</th>
+<th>Valor</th>
+<th>Data</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody id="tabela"></tbody>
+</table>
+
+<div class="total" id="total"></div>
+
+</div>
+
+<script>
+
+let dados = JSON.parse(localStorage.getItem("oficina")) || [];
+
+/* FORMATAR SERVIÇOS */
+function formatarServicos(servicos){
+
+    return (servicos || []).map(s => {
+
+        if(typeof s === "object"){
+            return `${s.nome} - R$ ${Number(s.preco || 0).toFixed(2)}`;
+        }
+
+        return s;
+
+    }).join(", ");
+}
+
+/* FILTRAR */
+function filtrar(){
+
+    let busca = document.getElementById("busca").value.toLowerCase();
+    let inicio = document.getElementById("dataInicio").value;
+    let fim = document.getElementById("dataFim").value;
+
+    let tabela = document.getElementById("tabela");
+    tabela.innerHTML = "";
+
+    let total = 0;
+    let qtd = 0;
+
+    dados.forEach((item,index)=>{
+
+        let servTexto = formatarServicos(item.servicos);
+
+        let texto = (
+            (item.cliente || "") +
+            (item.responsavel || "") +
+            servTexto
+        ).toLowerCase();
+
+        let data = (item.data || "").slice(0,10);
+
+        let passouBusca = texto.includes(busca);
+        let passouData = true;
+
+        if(inicio && data < inicio) passouData = false;
+        if(fim && data > fim) passouData = false;
+
+        if(passouBusca && passouData){
+
+            qtd++;
+            total += Number(item.valor || 0);
+
+            tabela.innerHTML += `
+            <tr>
+                <td>${item.cliente}</td>
+                <td>${item.moto} ${item.modelo}</td>
+                <td>${item.km}</td>
+                <td>${servTexto}</td>
+                <td>${item.responsavel}</td>
+                <td>R$ ${Number(item.valor).toFixed(2)}</td>
+                <td>${item.data}</td>
+                <td>
+                    <button onclick="imprimir(${index})">🧾</button>
+                    <button onclick="excluir(${index})">❌</button>
+                </td>
+            </tr>
+            `;
+        }
+
+    });
+
+    document.getElementById("total").innerText =
+    `Total: R$ ${total.toFixed(2)} | Serviços: ${qtd}`;
+}
+
+/* IMPRIMIR */
+function imprimir(index){
+
+    let item = dados[index];
+
+    let serv = (item.servicos || []).map(s => {
+
+        if(typeof s === "object"){
+            return `${s.nome} - R$ ${Number(s.preco || 0).toFixed(2)}`;
+        }
+
+        return s;
+
+    }).join("<br>");
+
+    let w = window.open('');
+
+    w.document.write(`
+    <html>
+    <body onload="window.print(); setTimeout(()=>window.close(),500)">
+    <h2>Comprovante</h2>
+
+    Cliente: ${item.cliente}<br>
+    Moto: ${item.moto} ${item.modelo}<br>
+    KM: ${item.km}<br><br>
+
+    <b>Serviços:</b><br>
+    ${serv}<br><br>
+
+    Mecânico: ${item.responsavel}<br>
+    Valor: R$ ${Number(item.valor).toFixed(2)}<br>
+    Data: ${item.data}
+
+    </body>
+    </html>
+    `);
+}
+
+/* EXCLUIR */
+function excluir(index){
+
+    if(confirm("Excluir?")){
+        dados.splice(index,1);
+        localStorage.setItem("oficina", JSON.stringify(dados));
+        filtrar();
+    }
+}
+
+/* CARREGAR */
+filtrar();
+
+</script>
+
+</body>
+</html>

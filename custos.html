@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custo Geral</title>
+<button class="btn-voltar" onclick="window.location.href='index.html'">
+⬅️ Voltar
+</button>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+
+body{
+    background:#f0f2f5;
+    padding:20px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+}
+
+.card{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
+    border-radius:6px;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.btn-add{
+    background:#2563eb;
+    color:white;
+}
+
+.btn-del{
+    background:#dc2626;
+    color:white;
+}
+
+.total{
+    margin-top:20px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#f9fafb;
+    padding:12px;
+    border-radius:8px;
+    margin-top:10px;
+    border:1px solid #e5e7eb;
+}
+
+.info{
+    flex:1;
+}
+
+.valor{
+    font-weight:bold;
+    color:#dc2626;
+}
+
+h2{
+    margin-top:30px;
+    margin-bottom:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="card">
+
+<h1>💸 Custo Geral</h1>
+
+<input type="text" id="descricao" placeholder="Descrição do custo">
+
+<input type="number" id="valor" placeholder="Valor" step="0.01">
+
+<button class="btn-add" onclick="adicionar()">
+Adicionar Custo
+</button>
+
+<div class="total">
+Total de Custos: <span id="total">R$ 0,00</span>
+</div>
+
+<h2>Histórico</h2>
+
+<div id="historico"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let custos = JSON.parse(localStorage.getItem("custosGerais")) || []
+
+function moeda(v){
+    return Number(v).toLocaleString("pt-BR",{
+        style:"currency",
+        currency:"BRL"
+    })
+}
+
+function salvar(){
+    localStorage.setItem(
+        "custosGerais",
+        JSON.stringify(custos)
+    )
+}
+
+function adicionar(){
+
+    let descricao =
+    document.getElementById("descricao").value.trim()
+
+    let valor =
+    parseFloat(document.getElementById("valor").value)
+
+    if(!descricao || !valor){
+        alert("Preencha descrição e valor.")
+        return
+    }
+
+    custos.push({
+        descricao,
+        valor,
+        data:new Date().toLocaleString("pt-BR")
+    })
+
+    salvar()
+    atualizar()
+
+    document.getElementById("descricao").value=""
+    document.getElementById("valor").value=""
+}
+
+function excluir(index){
+
+    if(confirm("Excluir este custo?")){
+        custos.splice(index,1)
+        salvar()
+        atualizar()
+    }
+}
+
+function atualizar(){
+
+    let html = ""
+    let total = 0
+
+    custos.forEach((item,index)=>{
+
+        total += Number(item.valor)
+
+        html += `
+        <div class="item">
+
+            <div class="info">
+                <strong>${item.descricao}</strong><br>
+                <small>${item.data}</small><br>
+                <span class="valor">
+                    ${moeda(item.valor)}
+                </span>
+            </div>
+
+            <button
+            class="btn-del"
+            onclick="excluir(${index})">
+            Excluir
+            </button>
+
+        </div>
+        `
+    })
+
+    document.getElementById("historico").innerHTML =
+        html || "<p>Nenhum custo cadastrado.</p>"
+
+    document.getElementById("total").innerText =
+        moeda(total)
+}
+
+atualizar()
+
+</script>
+
+</body>
+</html>

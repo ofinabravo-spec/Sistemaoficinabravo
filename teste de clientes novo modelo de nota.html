@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clientes - Sistema de Vendas</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
+body { display:flex; min-height:100vh; background:#f0f2f5; color:#333; }
+nav { width:200px; background:#1f2937; display:flex; flex-direction:column; padding:20px; position:relative; }
+nav h2 { color:white; margin-bottom:20px; text-align:center; font-size:20px; }
+nav a { text-decoration:none; color:white; padding:12px 10px; margin-bottom:10px; border-radius:6px; transition:0.3s; text-align:center; background:#374151; position:relative; }
+nav a:hover { background:#4b5563; }
+nav a .dot { width:10px; height:10px; background:red; border-radius:50%; position:absolute; top:8px; right:8px; display:inline-block; }
+main { flex:1; padding:20px; overflow:auto; }
+h1 { margin-bottom:20px; color:#1f2937; }
+.form-group { margin-bottom:10px; }
+.form-group label { display:block; margin-bottom:5px; }
+.form-group input, .form-group select { width:60%; padding:8px; border-radius:5px; border:1px solid #ccc; }
+table { width:100%; border-collapse:collapse; margin-top:10px; background:white; border-radius:8px; overflow:hidden; }
+th, td { padding:10px; text-align:left; border-bottom:1px solid #ddd; }
+th { background:#111827; color:white; }
+tr:hover { background:#f3f4f6; }
+.btn { padding:6px 12px; border:none; border-radius:5px; cursor:pointer; transition:0.3s; }
+.btn-edit { background:#4f46e5; color:white; }
+.btn-delete { background:#dc2626; color:white; }
+.btn-unpay { background:#ef4444; color:white; }
+.btn-ganho { background:#0284c7; color:white; margin-left:10px; }
+.btn-whatsapp { background:#25d366; color:white; }
+.btn-pdf { background:#e11d48; color:white; }
+.ganho-container { background:#dbeafe; padding:15px; border-radius:8px; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.ganho-container label { font-weight:bold; color:#1e3a8a; }
+.ganho-container input { width:150px; padding:8px; border-radius:6px; border:1px solid #93c5fd; }
+#clientModal, #receiptModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000; }
+#clientModal div, #receiptModal div.modal-body { background:white; padding:20px; border-radius:8px; width:80%; max-width:1000px; max-height:90%; overflow:auto; }
+#receiptModal div.modal-body { max-width: 600px; text-align: center; }
+#clientModal h3, #receiptModal h3 { margin-bottom:10px; }
+.modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.center { text-align: center; }
+.select-table { width: 100%; margin-top: 15px; margin-bottom: 15px; }
+.select-table th, .select-table td { padding: 8px; border: 1px solid #ddd; font-size: 14px; }
+</style>
+</head>
+<body>
+<nav>
+<h2>📊 Menu</h2>
+<a href="Untitled-1.html">🏠 Início</a>
+<a href="produto.html">📦 Produtos</a>
+<a href="clientes.html">👥 Clientes</a>
+<a href="vendas.html">💰 Vendas</a>
+<a href="Relatório.html">📈 Relatórios</a>
+<a href="sorteio.html">🎯 Sorteio</a>
+<a href="previsao.html" id="previsaoLink">📅 Previsão<span class="dot" id="previsaoDot"></span></a>
+</nav>
+
+<main>
+<h1>Clientes</h1>
+<div class="ganho-container">
+<label for="ganhoTotal">💰 Bonus:</label>
+<input type="number" id="ganhoTotal" placeholder="Insira o valor">
+<button class="btn btn-ganho" onclick="dividirGanhos()">Dividir Ganho</button>
+<button class="btn btn-unpay" onclick="limparGanhos()">Limpar Ganho</button>
+</div>
+
+<div class="form-group">
+<label>Nome</label>
+<input type="text" id="clientName">
+</div>
+<button class="btn btn-edit" onclick="saveClient()">Salvar Cliente</button>
+
+<div class="form-group" style="margin-top:15px;">
+<label>Buscar Cliente</label>
+<input type="text" id="searchClient" placeholder="Digite o nome do cliente">
+</div>
+
+<h2>Lista de Clientes</h2>
+<table>
+<thead>
+<tr>
+<th>Nome</th>
+<th>Valor Total</th>
+<th>Lucro</th>
+<th>Não Pago</th>
+<th>Pagamento</th>
+<th>Ganho Recebido 💸</th>
+<th>Resumo</th>
+<th>Comprovante</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody id="clientsTable"></tbody>
+</table>
+</main>
+
+<div id="clientModal">
+<div>
+<h3 id="modalTitle">Resumo do Cliente</h3>
+<div id="modalContent"></div>
+<button class="btn btn-edit" onclick="closeModal()">Fechar</button>
+</div>
+</div>
+
+<div id="receiptModal">
+<div class="modal-body">
+<h3>Emitir Comprovante</h3>
+<p id="receiptModalText">Selecione os itens pagos que farão parte desta nota:</p>
+
+
+<div style="max-height: 300px; overflow-y: auto;">
+  <table class="select-table">
+    <thead>
+      <tr>
+        <th width="40"><input type="checkbox" id="selectAllReceipts" onclick="toggleSelectAllReceipts(this)"></th>
+        <th>Data</th>
+        <th>Produto</th>
+        <th>Qtd</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="receiptItemsTable"></tbody>
+  </table>
+</div>
+
+<p style="font-weight: bold; margin-top: 10px;">Como deseja gerar/enviar a nota?</p>
+<div class="modal-buttons">
+<button class="btn btn-whatsapp" id="btnSendWhatsapp">💬 WhatsApp</button>
+<button class="btn btn-pdf" id="btnGenPDF">📄 Imprimir / PDF</button>
+<button class="btn btn-delete" onclick="closeReceiptModal()">Cancelar</button>
+</div>
+</div>
+</div>
+
+<script>
+// === Dados ===
+let clients = JSON.parse(localStorage.getItem('clients')) || [];
+let sales = JSON.parse(localStorage.getItem('sales')) || [];
+let ganhosRecebidos = JSON.parse(localStorage.getItem('ganhosRecebidos')) || {};
+let companyData = JSON.parse(localStorage.getItem('companyData')) || {name:'FATIA PAIDEGUA', cnpj:'43.580.803/0001-75'};
+let editClientIndex = null;
+let activeReceiptClient = null;
+let currentClientPaidSales = [];
+
+// === Pontinho vermelho Previsão ===
+const previsaoDot = document.getElementById('previsaoDot');
+const previsaoLink = document.getElementById('previsaoLink');
+
+function checkPrevisao() {
+  const hojeStr = new Date().toLocaleDateString('pt-BR');
+  const ultimaNotificacao = localStorage.getItem('ultimaNotificacaoPrevisao');
+  let temPrevisaoHoje = true; 
+
+  if (temPrevisaoHoje) {
+    previsaoDot.style.display = 'inline-block';
+    if (ultimaNotificacao !== hojeStr) {
+      if (Notification.permission === "granted") {
+        new Notification("📅 Previsão Hoje!", {
+          body: "Existe previsão ativa para hoje. Clique em 'Previsão' no menu para ver detalhes.",
+          icon: "https://img.icons8.com/color/48/000000/calendar--v1.png"
+        });
+        localStorage.setItem('ultimaNotificacaoPrevisao', hojeStr);
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("📅 Previsão Hoje!", {
+              body: "Existe previsão ativa para hoje. Clique em 'Previsão' no menu para ver detalhes.",
+              icon: "https://img.icons8.com/color/48/000000/calendar--v1.png"
+            });
+            localStorage.setItem('ultimaNotificacaoPrevisao', hojeStr);
+          }
+        });
+      }
+    }
+  } else {
+    previsaoDot.style.display = 'none';
+  }
+}
+
+checkPrevisao();
+setInterval(checkPrevisao, 86400000);
+
+// === Funções principais ===
+function updateClientView(filter=''){
+  const table = document.getElementById('clientsTable');
+  table.innerHTML='';
+  clients.forEach((c,i)=>{
+    if(!c.name.toLowerCase().includes(filter.toLowerCase())) return;
+    const clientSales = sales.filter(s=>s.client===c.name);
+    const totalSales = clientSales.reduce((sum,s)=>sum+s.total,0);
+    const totalCost = clientSales.reduce((sum,s)=>sum+s.cost,0);
+    const profit = totalSales - totalCost;
+    const unpaidTotal = clientSales.filter(s=>!s.paid).reduce((sum,s)=>sum+s.total,0);
+    const btnPayment = unpaidTotal>0 ? `<button class="btn btn-unpay" onclick="togglePayment('${c.name}')">Pagar</button>` : '<span style="color:green;font-weight:bold;">Quitado</span>';
+    const ganho = ganhosRecebidos[c.name] ? `R$ ${ganhosRecebidos[c.name].toFixed(2)}` : '-';
+    table.innerHTML += `<tr>
+      <td>${c.name}</td>
+      <td>R$ ${totalSales.toFixed(2)}</td>
+      <td>R$ ${profit.toFixed(2)}</td>
+      <td style="color:red;font-weight:bold;">R$ ${unpaidTotal.toFixed(2)}</td>
+      <td>${btnPayment}</td>
+      <td style="color:#0284c7;font-weight:bold;">${ganho}</td>
+      <td><button class="btn btn-edit" onclick="showClientSummaryModal('${c.name}')">Resumo</button></td>
+      <td><button class="btn btn-ganho" style="margin-left:0;" onclick="openReceiptModal('${c.name}')">Emitir Nota</button></td>
+      <td>
+        <button class="btn btn-edit" onclick="editClient(${i})">Editar</button>
+        <button class="btn btn-delete" onclick="deleteClient(${i})">Excluir</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function saveClient(){
+  let name = document.getElementById('clientName').value.trim();
+  if(!name) return;
+  if(editClientIndex !== null){
+    const oldName = clients[editClientIndex].name;
+    clients[editClientIndex].name=name;
+    if(ganhosRecebidos[oldName]!==undefined){ ganhosRecebidos[name]=ganhosRecebidos[oldName]; delete ganhosRecebidos[oldName]; }
+    sales.forEach(s=>{ if(s.client===oldName) s.client=name; });
+    editClientIndex=null;
+  } else { clients.push({name}); }
+  localStorage.setItem('clients', JSON.stringify(clients));
+  localStorage.setItem('sales', JSON.stringify(sales));
+  localStorage.setItem('ganhosRecebidos', JSON.stringify(ganhosRecebidos));
+  document.getElementById('clientName').value='';
+  updateClientView();
+}
+
+function editClient(index){ document.getElementById('clientName').value=clients[index].name; editClientIndex=index; }
+function deleteClient(index){
+  const name = clients[index].name;
+  clients.splice(index,1);
+  sales = sales.filter(s=>s.client!==name);
+  delete ganhosRecebidos[name];
+  localStorage.setItem('clients', JSON.stringify(clients));
+  localStorage.setItem('sales', JSON.stringify(sales));
+  localStorage.setItem('ganhosRecebidos', JSON.stringify(ganhosRecebidos));
+  updateClientView();
+}
+function togglePayment(client){
+  sales.forEach(s=>{ if(s.client===client && !s.paid) s.paid=true; });
+  localStorage.setItem('sales', JSON.stringify(sales));
+  updateClientView();
+}
+function dividirGanhos(){
+  const ganhoTotal=parseFloat(document.getElementById('ganhoTotal').value);
+  if(isNaN(ganhoTotal) || ganhoTotal<=0){ alert('Insira valor válido!'); return; }
+  const ganhoPorCliente = ganhoTotal/clients.length;
+  clients.forEach(c=>ganhosRecebidos[c.name]=ganhoPorCliente);
+  localStorage.setItem('ganhosRecebidos', JSON.stringify(ganhosRecebidos));
+  updateClientView();
+}
+function limparGanhos(){
+  if(!confirm("Deseja realmente limpar os ganhos de todos os clientes?")) return;
+  ganhosRecebidos={};
+  localStorage.setItem('ganhosRecebidos', JSON.stringify(ganhosRecebidos));
+  document.getElementById('ganhoTotal').value='';
+  updateClientView();
+}
+
+function showClientSummaryModal(client){
+  const modal=document.getElementById('clientModal');
+  const modalTitle=document.getElementById('modalTitle');
+  const modalContent=document.getElementById('modalContent');
+  modalTitle.innerText=`Resumo: ${client}`;
+  const clientSales=sales.filter(s=>s.client===client);
+  if(clientSales.length===0){ modalContent.innerHTML='<p>Nenhuma compra registrada</p>'; } 
+  else {
+    let html='<table style="width:100%; border-collapse:collapse;">';
+    html+='<tr><th>Data</th><th>Qtd</th><th>Produto</th><th>Total</th><th>Status</th></tr>';
+    clientSales.forEach((s,idx)=>{
+      if(typeof s.paid==='undefined') s.paid=false;
+      const statusColor=s.paid?'green':'red';
+      const statusText=s.paid?'Pago':'Não Pago';
+      html+=`<tr>
+        <td>${s.date}</td>
+        <td class="center">${s.quantity}</td>
+        <td>${s.product}</td>
+        <td>R$ ${s.total.toFixed(2)}</td>
+        <td><button style="background:${statusColor};color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;" onclick="toggleSalePayment('${client}',${idx})">${statusText}</button></td>
+      </tr>`;
+    });
+    html+='</table>';
+    html+=`<div style="margin-top:10px;">
+      <label>Forma de Pagamento:</label>
+      <input type="text" id="modalPaymentMethod" value="Dinheiro" style="margin-bottom:5px;">
+      <br>
+      <label>Dias para Vencimento:</label>
+      <input type="number" id="modalDiasVencer" value="7" style="width:60px;">
+    </div>
+    <div style="text-align:right; margin-top:10px;">
+      <button class="btn btn-ganho" onclick="preparePrint('${client}')">🖨️ Imprimir Resumo</button>
+    </div>`;
+    modalContent.innerHTML = html;
+  }
+  modal.style.display='flex';
+}
+
+function closeModal(){ document.getElementById('clientModal').style.display='none'; updateClientView(); }
+function toggleSalePayment(client,index){
+  sales.filter(s=>s.client===client)[index].paid=!sales.filter(s=>s.client===client)[index].paid;
+  localStorage.setItem('sales', JSON.stringify(sales));
+  showClientSummaryModal(client);
+}
+
+// --- Novas Funções Para Seleção e Confirmação de Comprovante de Pagamento ---
+function openReceiptModal(client) {
+  currentClientPaidSales = sales.filter(s => s.client === client && s.paid);
+  if(currentClientPaidSales.length === 0) {
+    alert("Este cliente não possui nenhuma venda com status 'Pago' para emitir comprovante.");
+    return;
+  }
+  
+  activeReceiptClient = client;
+  document.getElementById('selectAllReceipts').checked = true;
+  
+  const tbody = document.getElementById('receiptItemsTable');
+  tbody.innerHTML = '';
+  
+  currentClientPaidSales.forEach((s, idx) => {
+    tbody.innerHTML += `<tr>
+      <td class="center"><input type="checkbox" class="receipt-item-check" data-index="${idx}" checked></td>
+      <td>${s.date}</td>
+      <td>${s.product}</td>
+      <td class="center">${s.quantity}</td>
+      <td>R$ ${s.total.toFixed(2)}</td>
+    </tr>`;
+  });
+  
+  document.getElementById('receiptModal').style.display = 'flex';
+}
+
+function toggleSelectAllReceipts(master) {
+  const checkboxes = document.querySelectorAll('.receipt-item-check');
+  checkboxes.forEach(cb => cb.checked = master.checked);
+}
+
+function getSelectedReceiptSales() {
+  const checkboxes = document.querySelectorAll('.receipt-item-check');
+  let selectedSales = [];
+  checkboxes.forEach(cb => {
+    if(cb.checked) {
+      const idx = parseInt(cb.getAttribute('data-index'));
+      selectedSales.push(currentClientPaidSales[idx]);
+    }
+  });
+  return selectedSales;
+}
+
+function closeReceiptModal() {
+  document.getElementById('receiptModal').style.display = 'none';
+  activeReceiptClient = null;
+  currentClientPaidSales = [];
+}
+
+// Vincula eventos aos botões do modal de destino
+document.getElementById('btnGenPDF').onclick = function() {
+  const selected = getSelectedReceiptSales();
+  if(selected.length === 0) { alert("Selecione pelo menos uma nota/venda."); return; }
+  if(activeReceiptClient) {
+    imprimirNotaComprovante(activeReceiptClient, selected);
+    closeReceiptModal();
+  }
+};
+
+document.getElementById('btnSendWhatsapp').onclick = function() {
+  const selected = getSelectedReceiptSales();
+  if(selected.length === 0) { alert("Selecione pelo menos uma nota/venda."); return; }
+  if(activeReceiptClient) {
+    enviarNotaWhatsapp(activeReceiptClient, selected);
+    closeReceiptModal();
+  }
+};
+
+function gerarTextoComprovante(client, selectedSales) {
+  const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+  const totalPago = selectedSales.reduce((sum, s) => sum + s.total, 0).toFixed(2);
+  
+  let texto = `*COMPROVANTE DE PAGAMENTO*\n`;
+  texto += `*Empresa:* ${companyData.name}\n`;
+  texto += `*CNPJ:* ${companyData.cnpj}\n`;
+  texto += `*Data de Emissão:* ${hoje}\n`;
+  texto += `-----------------------------------\n`;
+  texto += `*Cliente:* ${client}\n`;
+  texto += `-----------------------------------\n`;
+  texto += `*Itens Pagos:*\n`;
+  
+  selectedSales.forEach(s => {
+    texto += `- ${s.date} | Qtd: ${s.quantity} | ${s.product} | R$ ${s.total.toFixed(2)}\n`;
+  });
+  
+  texto += `-----------------------------------\n`;
+  texto += `*VALOR TOTAL PAGO: R$ ${totalPago}*\n\n`;
+  texto += `Obrigado pela preferência!`;
+  
+  return { texto, totalPago, hoje, selectedSales };
+}
+
+function enviarNotaWhatsapp(client, selectedSales) {
+  const dataNota = gerarTextoComprovante(client, selectedSales);
+  const mensagemUrl = encodeURIComponent(dataNota.texto);
+  window.open(`https://api.whatsapp.com/send?text=${mensagemUrl}`, '_blank');
+}
+
+function imprimirNotaComprovante(client, selectedSales) {
+  const dataNota = gerarTextoComprovante(client, selectedSales);
+  const printWindow = window.open('', '_blank');
+  
+  printWindow.document.write(`
+    <html lang="pt-BR">
+    <head>
+    <title>Comprovante de Pagamento — ${companyData.name}</title>
+    <style>
+      body{ font-family:Arial; margin:40px; color:#111; }
+      h1,h2,h3{text-align:center;margin:0;} h1{font-size:20px;font-weight:bold;} h2{font-size:16px;margin-top:4px;} h3{font-size:14px;margin-top:20px;text-align:left;} p{font-size:14px;margin-top:5px;}
+      table{width:100%;border-collapse:collapse;margin-top:10px;}
+      th,td{border:1px solid #000;padding:8px;text-align:left;}
+      th{background:#f3f3f3;}
+      .total{text-align:right;font-weight:bold;}
+      .center{text-align:center;}
+      .valor{color:green;font-weight:bold;}
+      .status-tag { text-align:center; font-weight:bold; color:green; border: 2px solid green; padding: 5px; margin-top:15px; text-transform: uppercase; display:inline-block;}
+    </style>
+    </head>
+    <body>
+      <h1>${companyData.name}</h1>
+      <h2>CNPJ: ${companyData.cnpj}</h2>
+      <p>Data do Comprovante: <strong>${dataNota.hoje}</strong></p>
+      
+      <div style="text-align:center;">
+        <span class="status-tag">★ COMPROVANTE DE PAGAMENTO / QUITADO ★</span>
+      </div>
+
+      <h3>Cliente: ${client}</h3>
+      <table>
+        <tr><th>Data</th><th>Qtd</th><th>Produto</th><th>Valor Pago</th></tr>
+        ${dataNota.selectedSales.map(s=>`<tr><td>${s.date}</td><td class="center">${s.quantity}</td><td>${s.product}</td><td class="valor">R$ ${s.total.toFixed(2)}</td></tr>`).join('')}
+        <tr><td colspan="3" class="total">Total Recebido:</td><td class="valor">R$ ${dataNota.totalPago}</td></tr>
+      </table>
+      <p style="margin-top:30px; text-align:center; font-style:italic;">Obrigado pela preferência!</p>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+// --- Impressão de Débitos Pendentes (Original) ---
+function preparePrint(client){
+  const metodo = document.getElementById('modalPaymentMethod').value;
+  const dias = parseInt(document.getElementById('modalDiasVencer').value) || 7;
+  const clientSales = sales.filter(s=>s.client===client && !s.paid);
+  if(clientSales.length===0){ alert("Nenhum valor a pagar para este cliente."); return; }
+  const hoje = new Date();
+  const vencimento = new Date(); vencimento.setDate(hoje.getDate()+dias);
+  const formatar = data=>data.toLocaleDateString('pt-BR',{ timeZone:'America/Sao_Paulo' });
+  const dataHoje=formatar(hoje);
+  const dataVencimento=formatar(vencimento);
+  const totalApagar = clientSales.reduce((sum,s)=>sum+s.total,0).toFixed(2);
+
+  const confirmDiv=document.createElement('div');
+  confirmDiv.style.position='fixed';
+  confirmDiv.style.top='0';
+  confirmDiv.style.left='0';
+  confirmDiv.style.width='100%';
+  confirmDiv.style.height='100%';
+  confirmDiv.style.background='rgba(0,0,0,0.5)';
+  confirmDiv.style.display='flex';
+  confirmDiv.style.justifyContent='center';
+  confirmDiv.style.alignItems='center';
+  confirmDiv.style.zIndex='2000';
+  confirmDiv.innerHTML=`<div style="background:white; padding:20px; border-radius:8px; max-width:400px; text-align:center;">
+    <p>Deseja editar os dados da empresa antes de imprimir?</p>
+    <button id="editYes" class="btn btn-ganho" style="margin-right:10px;">Sim</button>
+    <button id="editNo" class="btn btn-unpay">Não</button>
+  </div>`;
+  document.body.appendChild(confirmDiv);
+
+  document.getElementById('editYes').onclick=function(){
+    document.body.removeChild(confirmDiv);
+    const nome=prompt('Nome da Empresa:', companyData.name);
+    const cnpj=prompt('CNPJ:', companyData.cnpj);
+    if(nome && cnpj){ companyData={name:nome, cnpj:cnpj}; localStorage.setItem('companyData', JSON.stringify(companyData)); }
+    imprimirResumo();
+  };
+  document.getElementById('editNo').onclick=function(){ document.body.removeChild(confirmDiv); imprimirResumo(); };
+
+  function imprimirResumo(){
+    const printWindow=window.open('','_blank');
+    printWindow.document.write(`
+      <html lang="pt-BR">
+      <head>
+      <title>Nota de Pagamento — ${companyData.name}</title>
+      <style>
+        body{ font-family:Arial; margin:40px; color:#111; }
+        h1,h2,h3{text-align:center;margin:0;} h1{font-size:20px;font-weight:bold;} h2{font-size:16px;margin-top:4px;} h3{font-size:14px;margin-top:20px;text-align:left;} p{font-size:14px;margin-top:5px;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;}
+        th,td{border:1px solid #000;padding:8px;text-align:left;}
+        th{background:#f3f3f3;}
+        .total{text-align:right;font-weight:bold;}
+        .center{text-align:center;}
+        .valor{color:red;font-weight:bold;}
+      </style>
+      </head>
+      <body>
+        <h1>${companyData.name}</h1>
+        <h2>CNPJ: ${companyData.cnpj}</h2>
+        <p>Data de emissão: <strong>${dataHoje}</strong></p>
+        <p>Data de vencimento: <strong>${dataVencimento}</strong></p>
+        <p>Forma de pagamento: <strong>${metodo}</strong></p>
+        <h3>Cliente: ${client}</h3>
+        <table>
+          <tr><th>Data</th><th>Qtd</th><th>Produto</th><th>A Pagar</th></tr>
+          ${clientSales.map(s=>`<tr><td>${s.date}</td><td class="center">${s.quantity}</td><td>${s.product}</td><td class="valor">R$ ${s.total.toFixed(2)}</td></tr>`).join('')}
+          <tr><td colspan="3" class="total">Total a Pagar:</td><td class="valor">R$ ${totalApagar}</td></tr>
+        </table>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  }
+}
+
+// --- Busca ---
+document.getElementById('searchClient').addEventListener('input', e=>{ updateClientView(e.target.value); });
+updateClientView();
+</script>
+</body>
+</html>

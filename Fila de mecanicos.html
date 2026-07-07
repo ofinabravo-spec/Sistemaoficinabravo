@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fila Oficina Bravo</title>
+
+<style>
+/* Reset e Paleta de Cores Moderna */
+*{
+    box-sizing: border-box;
+}
+body{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 20px;
+    color: #1f2937;
+}
+
+.container{
+    max-width: 900px;
+    margin: auto;
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+}
+
+h2{
+    text-align: center;
+    margin-top: 0;
+    font-size: 24px;
+    color: #111827;
+}
+
+.btn-voltar{
+    width: 100%;
+    padding: 12px;
+    border: none;
+    background: #4b5563;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.btn-voltar:hover{
+    background: #374151;
+}
+
+/* Títulos dos Mecânicos */
+h3{
+    background: #f3f4f6;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 16px;
+    color: #374151;
+    margin-top: 25px;
+    border-left: 4px solid #4b5563;
+}
+
+/* Grid de Cards Responsivo */
+.grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+/* Design do Card Corrigido */
+.card{
+    background: #ffffff;
+    padding: 18px;
+    border: 1px solid #e5e7eb;
+    border-left: 6px solid #9ca3af;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.agendado{ border-left-color: #2563eb; }
+.pendente{ border-left-color: #dc2626; }
+.andamento{ border-left-color: #f59e0b; }
+.concluido{ 
+    border-left-color: #16a34a; 
+    background: #f9fafb;
+}
+
+.cliente-nome {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 8px;
+}
+
+.info{
+    margin: 6px 0;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.alerta{
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.ok{
+    color: #16a34a;
+    font-weight: bold;
+    text-align: center;
+    padding: 8px;
+    background: #f0fdf4;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.status{
+    font-weight: 700;
+    font-size: 14px;
+    margin: 10px 0;
+}
+
+.data-registro {
+    font-size: 11px;
+    color: #9ca3af;
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* Botões do Painel */
+button{
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+button:hover {
+    opacity: 0.9;
+}
+
+.btn-iniciar{ background: #2563eb; color: white; }
+.btn-concluir{ background: #16a34a; color: white; }
+
+/* Grupo de Ações Inferiores */
+.card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: auto;
+}
+.btn-imprimir{ background: #f59e0b; color: white; margin-top:0; }
+.btn-ver-nota{ background: #7c3aed; color: white; margin-top:0; }
+.btn-pdf{ background: #dc2626; color: white; margin-top:0; }
+.btn-whatsapp{ background: #16a34a; color: white; margin-top:0; }
+.btn-motor{ background: #ff5722; color: white; margin-top:0; }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>👨‍🔧 Fila de Atendimento</h2>
+
+<button class="btn-voltar" onclick="window.location.href='index.html'">
+⬅️ Voltar ao Início
+</button>
+
+<div id="fila"></div>
+
+</div>
+
+<script>
+let dados = JSON.parse(localStorage.getItem("oficina")) || [];
+
+function garantirStatus(){
+    dados.forEach(item => {
+        if(!item.status){ item.status = "agendado"; }
+    });
+    localStorage.setItem("oficina", JSON.stringify(dados));
+}
+
+function iniciar(index){
+    dados[index].status = "andamento";
+    localStorage.setItem("oficina", JSON.stringify(dados));
+    mostrar();
+}
+
+function concluir(index){
+    dados[index].status = "concluido";
+    localStorage.setItem("oficina", JSON.stringify(dados));
+    mostrar();
+}
+
+function ordenar(a, b){
+    const ordem = { agendado: 1, pendente: 2, andamento: 3, concluido: 4 };
+    return ordem[a.status] - ordenarBotoes(a, b);
+}
+
+function ordenarBotoes(a, b) {
+    const ordem = { agendado: 1, pendente: 2, andamento: 3, concluido: 4 };
+    return ordem[a.status] - ordem[b.status];
+}
+
+function textoStatus(status){
+    if(status === "agendado") return "📅 Agendado";
+    if(status === "andamento") return "🔧 Em andamento";
+    if(status === "concluido") return "✅ Concluído";
+    return "⏳ Pendente";
+}
+
+function mostrar(){
+    garantirStatus();
+    let div = document.getElementById("fila");
+    div.innerHTML = "";
+
+    let mecanicos = {};
+    dados.sort(ordenarBotoes);
+
+    dados.forEach((item, index) => {
+        let resp = item.responsavel || "Sem responsável";
+        if(!mecanicos[resp]){ mecanicos[resp] = []; }
+
+        let anterior = dados.slice(0, index).reverse().find(d => d.cliente === item.cliente);
+        let rodado = 0;
+
+        if(anterior && item.km && anterior.km){
+            rodado = Number(item.km) - Number(anterior.km);
+        }
+
+        let alerta = rodado >= 1000 ? "⚠️ Próximo da troca de óleo" : "";
+
+        mecanicos[resp].push({ ...item, index, rodado, alerta });
+    });
+
+    let htmlFinal = "";
+
+    for(let nome in mecanicos){
+        htmlFinal += `
+        <h3>👨‍🔧 ${nome} (${mecanicos[nome].length} serviços)</h3>
+        <div class="grid-cards">
+        `;
+
+        mecanicos[nome].forEach(item => {
+            let cor = item.status;
+
+            htmlFinal += `
+            <div class="card ${cor}">
+                <div>
+                    <div class="cliente-nome">${item.cliente || "Cliente não informado"}</div>
+                    
+                    <div class="info">🏍️ ${item.moto || "-"} ${item.modelo ? " - " + item.modelo : ""}</div>
+                    <div class="info">📊 KM: ${item.km || "Não informado"}</div>
+                    <div class="info">📅 ${item.dataAgendada || "Sem data"} às ${item.horaAgendada || "--:--"}</div>
+                    <div class="info">🔄 Rodado: ${item.rodado} km</div>
+                    
+                    ${item.alerta ? `<div class="alerta">${item.alerta}</div>` : ""}
+                    
+                    <div class="status">${textoStatus(item.status)}</div>
+                    <span class="data-registro">${item.data || ""}</span>
+                </div>
+
+                <div>
+                    ${item.status === "agendado" ? `
+                    <button class="btn-iniciar" onclick="iniciar(${item.index})">▶ Iniciar Serviço</button>
+                    ` : ""}
+
+                    ${item.status !== "concluido" ? `
+                    <button class="btn-concluir" onclick="concluir(${item.index})">✔ Concluir Serviço</button>
+                    ` : `
+                    <div class="ok">✔ Serviço Finalizado</div>
+                    `}
+
+                    <div class="card-actions">
+                        <button class="btn-imprimir" onclick="imprimir(${item.index})">🧾 Imprimir</button>
+                        <button class="btn-ver-nota" onclick="verNota(${item.index})">👁️ Ver a Nota</button>
+                        <button class="btn-pdf" onclick="baixarPDF(${item.index})">📄 Baixar PDF</button>
+                        <button class="btn-motor" onclick="gerarGarantiaMotor(${item.index})">⚙️ Gar. Motor</button>
+                        <button class="btn-whatsapp" style="grid-column: 1 / -1;" onclick="enviarWhatsapp(${item.index})">💬 WhatsApp Normal</button>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        htmlFinal += `</div>`;
+    }
+
+    div.innerHTML = htmlFinal;
+}
+
+// Nova Função auxiliar inteligente para puxar o telefone do arquivo cadastro.html
+function obterTelefoneCliente(nomeCliente) {
+    if (!nomeCliente) return "";
+    let listaClientes = JSON.parse(localStorage.getItem("clientesOficina")) || [];
+    let clienteCadastrado = listaClientes.find(c => c.nome.toLowerCase().trim() === nomeCliente.toLowerCase().trim());
+    
+    if (clienteCadastrado) {
+        return clienteCadastrado.whatsapp || clienteCadastrado.telefone || "";
+    }
+    return "";
+}
+
+// WhatsApp tradicional com termo normal do cliente integrado ao cadastro
+function enviarWhatsapp(i){
+    let item = dados[i];
+    item.garantia = Number(item.garantia || 0);
+
+    if(!item.dataInicioGarantia || item.dataInicioGarantia === "-"){
+        item.dataInicioGarantia = new Date().toLocaleDateString('pt-BR');
+    }
+    if((!item.dataFimGarantia || item.dataFimGarantia === "-") && item.garantia > 0){
+        let inicio = new Date();
+        inicio.setDate(inicio.getDate() + item.garantia);
+        item.dataFimGarantia = inicio.toLocaleDateString('pt-BR');
+    }
+
+    item.dataInicioGarantia = item.dataInicioGarantia || "-";
+    item.dataFimGarantia = item.dataFimGarantia || "-";
+
+    let listaServicos = (item.servicos || [])
+        .map(s => `* ${s.nome}: R$ ${Number(s.preco || 0).toFixed(2)}`)
+        .join("\n");
+
+    if(!listaServicos) listaServicos = "Nenhum cadastrado";
+
+    let texto = `*OFICINA BRAVO* cnpj:57.480.896/0001-70
+        Endereço: Passagem Canaãn°, 8 - Terra Firme, Belém - PA, 66077-005🏍️\n`;
+    texto += `*Comprovante de Serviço*\n\n`;
+    texto += `👤 *Cliente:* ${item.cliente || "Não informado"}\n`;
+    texto += `🏍️ *Veículo:* ${item.moto || ""} ${item.modelo || ""}\n`;
+    texto += `📊 *KM:* ${item.km || "-"}\n`;
+    texto += `📅 *Data:* ${item.dataAgendada || "-"} às ${item.horaAgendada || "--:--"}\n\n`;
+    texto += `🛠️ *Serviços Realizados:*\n${listaServicos}\n\n`;
+    texto += `💰 *Valor Total:* R$ ${Number(item.valor || 0).toFixed(2)}\n\n`;
+    texto += `🛡️ *Garantia:* ${item.garantia} dias\n`;
+    texto += `📅 *Início da Garantia:* ${item.dataInicioGarantia}\n`;
+    texto += `📅 *Fim da Garantia:* ${item.dataFimGarantia}\n\n`;
+    texto += `*TERMO DE GARANTIA*\n`;
+    texto += `Esta garantia cobre exclusivamente os serviços executados nesta Ordem de Serviço pelo prazo de ${item.garantia} dias.\n`;
+    texto += `Início: ${item.dataInicioGarantia}\n`;
+    texto += `Validade até: ${item.dataFimGarantia}\n`;
+    texto += `A garantia *não cobre*:
+
+ A garantia não cobre desgaste natural, mau
+uso, acidentes, modificações realizadas por 
+terceiros ou problemas não relacionados ao 
+serviço executado.
+\n\n`;
+    texto += `_Obrigado pela preferência! Correndo com segurança._`;
+
+    let numeroWhats = obterTelefoneCliente(item.cliente);
+    numeroWhats = numeroWhats.replace(/\D/g,'');
+
+    if(!numeroWhats) {
+        alert("Aviso: Este cliente não possui número de WhatsApp cadastrado na lista. O WhatsApp abrirá para escolha manual do contato.");
+    }
+
+    let url = numeroWhats ? `https://wa.me/55${numeroWhats}?text=${encodeURIComponent(texto)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+}
+
+// Botão de Motor inteligente integrado ao cadastro de contatos
+function gerarGarantiaMotor(i){
+    let item = dados[i];
+    if(!item){
+        alert("OS não encontrada");
+        return;
+    }
+
+    let enviarPorWhats = confirm("⚙️ TERMO DE GARANTIA DE MOTOR\n\nDeseja enviar este termo via WHATSAPP?\n\n[OK] para WhatsApp\n[Cancelar] para continuar em PDF / Impressão");
+
+    let prazoMotor = 90;
+    let dataInicio = item.dataInicioGarantia && item.dataInicioGarantia !== "-" ? item.dataInicioGarantia : new Date().toLocaleDateString('pt-BR');
+    
+    let parts = dataInicio.split('/');
+    let dataInicioObj = parts.length === 3 ? new Date(parts[2], parts[1] - 1, parts[0]) : new Date();
+    
+    let dataFimObj = new Date(dataInicioObj.getTime());
+    dataFimObj.setDate(dataFimObj.getDate() + 90);
+    let dataFim = dataFimObj.toLocaleDateString('pt-BR');
+
+    let itemMotor = {
+        ...item,
+        garantia: prazoMotor,
+        dataInicioGarantia: dataInicio,
+        dataFimGarantia: dataFim
+    };
+
+    if(enviarPorWhats){
+        let listaServicos = (itemMotor.servicos || [])
+            .map(s => `* 🛠️ ${s.nome}: R$ ${Number(s.preco || 0).toFixed(2)}`)
+            .join("\n");
+
+        if(!listaServicos) listaServicos = "* 🛠️ Serviço Geral de Motor";
+
+        let textoMotor = `🏍️ *OFICINA BRAVO* \n🧾 *CNPJ:* 57.480.896/0001-70\n📍 *Endereço:* Passagem Canaã, nº 8 — Terra Firme, Belém/PA — CEP 66077-005\n\n`;
+        textoMotor += `# 🛠️ COMPROVANTE DE SERVIÇO (REPARO DE MOTOR)\n\n`;
+        textoMotor += `👤 *Cliente:* ${itemMotor.cliente || ""}\n`;
+        textoMotor += `🏍️ *Veículo:* ${itemMotor.moto || ""} ${itemMotor.modelo || ""}\n`;
+        textoMotor += `📊 *KM:* ${itemMotor.km || "—"}\n`;
+        textoMotor += `📅 *Data:* ${itemMotor.dataAgendada || "-"} às ${itemMotor.horaAgendada || "--:--"}\n\n`;
+        textoMotor += `## 🔧 Serviços realizados\n\n${listaServicos}\n\n`;
+        textoMotor += `## 💰 Valor total\n\n*R$ ${Number(itemMotor.valor || 0).toFixed(2)}*\n\n---\n\n`;
+        textoMotor += `# 🛡️ GARANTIA DO SERVIÇO\n\n`;
+        textoMotor += `🛡️ *Prazo de garantia:* 90 dias (Motor)\n`;
+        textoMotor += `📅 *Início da garantia:* ${itemMotor.dataInicioGarantia}\n`;
+        textoMotor += `📅 *Validade até:* ${itemMotor.dataFimGarantia}\n\n`;
+        textoMotor += `## 📜 TERMO DE GARANTIA DO MOTOR\n\n`;
+        textoMotor += `Esta garantia cobre exclusivamente os serviços executados nesta Ordem de Serviço pelo prazo de *90 (noventa) dias, com início em ${itemMotor.dataInicioGarantia}* e validade até *${itemMotor.dataFimGarantia}*.\n\n`;
+        textoMotor += `Foi realizado *serviço de motor com substituição de peças*, conforme necessidade técnica identificada. Em razão disso, o veículo deverá passar por *acompanhamento preventivo obrigatório* para garantir o correto funcionamento e assentamento adequado das peças.\n\n`;
+        textoMotor += `### 🔍 Condições de acompanhamento\n`;
+        textoMotor += `* 🔁 O cliente deverá retornar para *acompanhamento periódico a cada 1.000 km*;\n`;
+        textoMotor += `* 🛢️ A *troca de óleo deve ser feita preferencialmente na Oficina Bravo*;\n`;
+        textoMotor += `* 📸 Caso a troca seja feita fora, o cliente deverá *enviar foto da quilometragem atual após a troca* para registro;\n`;
+        textoMotor += `* 🚨 Qualquer ruído ou alteração no funcionamento do motor deverá ser comunicado imediatamente à oficina.\n\n`;
+        textoMotor += `### ⚠️ Limites da garantia\n`;
+        textoMotor += `A garantia *não cobre*:
+
+* ⛔ desgaste natural de peças de uso e consumo;
+* ⛔ mau uso do veículo;
+* ⛔ acidentes, quedas ou colisões;
+* ⛔ modificações, desmontagens ou reparos realizados por terceiros;
+* ⛔ falta de manutenção preventiva;
+* ⛔ problemas não relacionados ao serviço executado nesta Ordem de Serviço.
+\n\n`;
+        textoMotor += `📌 O não cumprimento das orientações poderá comprometer a validade da garantia.\n\n`;
+        textoMotor += `---\n\n🙏 *Obrigado pela preferência!*\n🏁 *Oficina Bravo — Correndo com segurança.*`;
+
+        let numeroWhats = obterTelefoneCliente(itemMotor.cliente);
+        numeroWhats = numeroWhats.replace(/\D/g,'');
+
+        let url = numeroWhats ? `https://wa.me/55${numeroWhats}?text=${encodeURIComponent(textoMotor)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(textoMotor)}`;
+        window.open(url, '_blank');
+    } else {
+        let w = window.open('', '_blank');
+        if(!w){
+            alert("Não foi possível abrir o gerenciador de impressão. Ative as permissões de pop-up.");
+            return;
+        }
+        let htmlImpressao = montarHtmlComprovante(itemMotor, false, true);
+        w.document.open();
+        w.document.write(htmlImpressao);
+        w.document.close();
+        w.onload = function(){
+            setTimeout(() => { w.print(); }, 400);
+        };
+    }
+}
+
+
+function montarHtmlComprovante(item, autoPrint = false, deMotor = false){
+    item.garantia = Number(item.garantia || 0);
+
+    if(!item.dataInicioGarantia || item.dataInicioGarantia === "-"){
+        item.dataInicioGarantia = new Date().toLocaleDateString('pt-BR');
+    }
+
+    if((!item.dataFimGarantia || item.dataFimGarantia === "-") && item.garantia > 0){
+        let inicio = new Date();
+        inicio.setDate(inicio.getDate() + item.garantia);
+        item.dataFimGarantia = inicio.toLocaleDateString('pt-BR');
+    }
+
+    item.dataInicioGarantia = item.dataInicioGarantia || "-";
+    item.dataFimGarantia = item.dataFimGarantia || "-";
+
+    let serv = ((item.servicos) || [])
+    .map(s => `${s.nome || ""} - R$ ${Number(s.preco || 0).toFixed(2)}`)
+    .join("<br>");
+
+    let termoGarantiaTexto = "";
+    
+    if(deMotor) {
+        termoGarantiaTexto = `
+            <b>TERMO DE GARANTIA DE MOTOR (90 DIAS)</b><br><br>
+            Esta garantia cobre exclusivamente os serviços executados nesta Ordem de Serviço pelo prazo de
+            <b>90 (noventa) dias</b>, com início em
+            <b>${item.dataInicioGarantia}</b> e validade até
+            <b>${item.dataFimGarantia}</b>.<br><br>
+            No presente serviço, foi realizado serviço de motor com substituição de peças, conforme necessidade técnica identificada durante a execução do reparo. Em razão disso, o veículo deverá passar por acompanhamento preventivo obrigatório, com o objetivo de garantir o correto funcionamento do motor e o assentamento adequado das peças substituídas.<br><br>
+            <b>Condições de acompanhamento:</b><br><br>
+            • Retornar para acompanhamento periódico a cada 1.000 km.<br>
+            • Troca de óleo realizada preferencialmente na Oficina Bravo.<br>
+            • Enviar foto da quilometragem caso a troca seja realizada fora da oficina.<br>
+            • Comunicar imediatamente qualquer ruído, vazamento, superaquecimento ou alteração no funcionamento do motor.<br><br>
+            <b>Limites da garantia:</b><br><br>
+            A garantia não cobre:<br><br>
+            • Desgaste natural de peças de uso e consumo.<br>
+            • Mau uso do veículo.<br>
+            • Acidentes, quedas ou colisões.<br>
+            • Modificações, desmontagens ou reparos realizados por terceiros.<br>
+            • Falta de manutenção preventiva.<br>
+            • Problemas não relacionados ao serviço executado nesta Ordem de Serviço.<br><br>
+            <b>Importante:</b><br>
+            O não cumprimento das orientações de acompanhamento e manutenção poderá comprometer a validade da garantia.<br><br>
+            <div style="text-align:center;">
+                <b>Obrigado pela preferência!</b><br>
+                Oficina Bravo — Correndo com segurança.
+            </div>
+        `;
+    } else {
+        termoGarantiaTexto = `
+            <b>TERMO DE GARANTIA</b><br><br>
+            Esta garantia cobre exclusivamente os serviços executados nesta Ordem de Serviço pelo prazo de ${item.garantia} dias.<br><br>
+            Início: ${item.dataInicioGarantia}<br>
+            Validade até: ${item.dataFimGarantia}<br><br>
+            A garantia não cobre desgaste natural, mau uso, acidentes, modificações realizadas por terceiros ou problemas não relacionados ao serviço executado.
+        `;
+    }
+
+    return `
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+    <meta charset="UTF-8">
+    <title>Comprovante</title>
+    <style>
+    body{
+        font-family: monospace;
+        padding: 15px;
+        max-width: 320px;
+        margin: auto;
+        color: #000;
+    }
+    h2{
+        text-align:center;
+        margin-bottom:5px;
+    }
+    hr{
+        border:1px dashed #000;
+    }
+    .total{
+        font-size:18px;
+        font-weight:bold;
+        text-align:right;
+    }
+    .center{
+        text-align:center;
+    }
+    .garantia{
+        font-size:12px;
+        line-height:18px;
+    }
+    .item-servico{
+        font-size:12px;
+        margin:4px 0;
+    }
+    </style>
+    </head>
+    <body>
+        <h2>OFICINA BRAVO</h2>
+        <h2>cnpj:57.480.896/0001-70</h2>
+        <h2>Endereço: Passagem Canaãn°, 8 - Terra Firme, Belém - PA, 66077-005</h2>
+        <div class="center">Comprovante de Serviço</div>
+        <hr>
+        <b>Cliente:</b> ${item.cliente || ""}<br>
+        <b>Veículo:</b> ${item.moto || ""} - ${item.modelo || ""}<br>
+        <b>KM:</b> ${item.km || ""}<br>
+        <b>Responsável:</b> ${item.responsavel || "-"}<br>
+        <b>Agendamento:</b> ${item.dataAgendada || "-"} ${item.horaAgendada || ""}<br>
+        <hr>
+        <b>Serviços:</b><br>
+        <div class="item-servico">${serv || "Nenhum"}</div>
+        <hr>
+        <div class="total">Total: R$ ${Number(item.valor || 0).toFixed(2)}</div>
+        <hr>
+        <b>Garantia:</b> ${item.garantia} dias<br>
+        <b>Início da Garantia:</b> ${item.dataInicioGarantia}<br>
+        <b>Fim da Garantia:</b> ${item.dataFimGarantia}<br>
+        <hr>
+        <div class="garantia">
+            ${termoGarantiaTexto}
+        </div>
+        <hr>
+        <div class="center">Obrigado pela preferência!</div>
+        <div class="center" style="margin-top:10px;">${new Date().toLocaleString()}</div>
+
+        ${autoPrint ? `
+        <script>
+            window.onload = function(){
+                setTimeout(function(){
+                    window.print();
+                    window.close();
+                }, 300);
+            };
+        <\/script>` : ""}
+    </body>
+    </html>
+    `;
+}
+
+function verNota(i){
+    let item = dados[i];
+    if(!item){ alert("OS não encontrada"); return; }
+    let w = window.open('', '_blank');
+    let htmlImpressao = montarHtmlComprovante(item, false, false);
+    w.document.open();
+    w.document.write(htmlImpressao);
+    w.document.close();
+}
+
+function imprimir(i){
+    let item = dados[i];
+    if(!item){ alert("OS não encontrada"); return; }
+    let w = window.open('', '_blank');
+    let htmlImpressao = montarHtmlComprovante(item, true, false);
+    w.document.open();
+    w.document.write(htmlImpressao);
+    w.document.close();
+}
+
+function baixarPDF(i){
+    let item = dados[i];
+    if(!item){ alert("OS não encontrada"); return; }
+    let w = window.open('', '_blank');
+    let htmlImpressao = montarHtmlComprovante(item, false, false);
+    w.document.open();
+    w.document.write(htmlImpressao);
+    w.document.close();
+    w.onload = function(){
+        setTimeout(() => { try{ w.print(); }catch(e){} }, 400);
+    };
+}
+
+// Inicializa a fila
+mostrar();
+</script>
+
+</body>
+</html>

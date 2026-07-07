@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Triagem e Fila Inteligente - Oficina Bravo</title>
+<style>
+:root{
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --amber: #f59e0b;
+  --red: #dc2626;
+  --green: #16a34a;
+  --violet: #7c3aed;
+  --shadow: 0 10px 25px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  padding: 20px;
+}
+.container{
+  max-width:1400px;
+  margin:0 auto;
+}
+.topbar{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:18px;
+}
+h1{ margin:0; font-size:28px; }
+.subtitle{ color:var(--muted); margin-top:4px; font-size:14px; }
+.actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+.btn{
+  border:none;
+  background:var(--blue);
+  color:#fff;
+  padding:10px 16px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  font-size:14px;
+  transition: background 0.2s;
+}
+.btn.secondary{ background:#4b5563; }
+.btn.success{ background:var(--green); }
+.btn:hover{ filter:brightness(.9); }
+
+.panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:18px;
+  margin-bottom: 18px;
+}
+
+.filters{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+  gap:12px;
+}
+.filters label{
+  display:block;
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:6px;
+  font-weight: 600;
+}
+.filters input, .filters select{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#fff;
+  font-size:14px;
+}
+
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
+  margin-bottom:18px;
+}
+.metric{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:16px;
+}
+.metric .label{ color:var(--muted); font-size:13px; font-weight: 600; }
+.metric .value{ font-size:28px; font-weight:800; margin-top:4px; }
+
+.board{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap:16px;
+}
+.column{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  display:flex;
+  flex-direction:column;
+  min-height: 600px;
+}
+.column-header{
+  padding:16px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background: #f9fafb;
+  border-radius:18px 18px 0 0;
+}
+.column-title{ font-size:18px; font-weight:800; }
+.column-sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+.badge-contador {
+  background: #4b5563;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dropzone{
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex-grow: 1;
+}
+.dropzone.drag-over{
+  background:#eff6ff;
+  outline:2px dashed var(--blue);
+  outline-offset:-10px;
+  border-radius:16px;
+}
+
+/* Card Design */
+.card{
+  border:1px solid var(--line);
+  border-left:8px solid #9ca3af;
+  border-radius:14px;
+  padding:14px;
+  background:#fff;
+  cursor:grab;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:active { cursor: grabbing; }
+.card.dragging{ opacity:.4; }
+.card.alta{ border-left-color:var(--red); }
+.card.media{ border-left-color:var(--amber); }
+.card.baixa{ border-left-color:var(--green); }
+
+.card-header{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom: 8px;
+}
+.client{ font-size:16px; font-weight:800; }
+.badges{ display:flex; gap:6px; flex-wrap:wrap; margin: 8px 0; }
+.badge{
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-weight:700;
+}
+.badge.red{ background:#fee2e2; color:#991b1b; }
+.badge.amber{ background:#fef3c7; color:#92400e; }
+.badge.green{ background:#dcfce7; color:#166534; }
+.badge.blue{ background:#dbeafe; color:#1d4ed8; }
+.badge.violet{ background:#ede9fe; color:#6d28d9; }
+
+.meta{
+  display:grid;
+  gap:6px;
+  color:#374151;
+  font-size:13px;
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.card-actions{
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:6px;
+}
+.card-actions button{
+  border: 1px solid var(--line);
+  border-radius:8px;
+  padding:6px;
+  cursor:pointer;
+  font-weight:600;
+  font-size:12px;
+  background: #fff;
+  transition: background 0.1s;
+}
+.card-actions button:hover{ background: #f3f4f6; }
+.card-actions .btn-mov-rapido {
+  grid-column: span 2;
+  background: var(--blue);
+  color: white;
+  border: none;
+}
+.card-actions .btn-mov-rapido:hover { background: var(--blue-hover); }
+
+.empty{
+  border:2px dashed var(--line);
+  border-radius:14px;
+  padding:24px;
+  color:var(--muted);
+  text-align:center;
+  font-size:14px;
+}
+.legend{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+/* Modal */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(17,24,39,.5);
+  display:none; align-items:center; justify-content:center; padding:18px; z-index:1000;
+}
+.modal{
+  width:min(760px, 100%);
+  background:#fff;
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  padding:24px;
+  max-height:90vh; overflow:auto;
+}
+.modal h2{ margin-top:0; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.form-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.form-grid .full{ grid-column:1 / -1; }
+.field label{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;}
+.field input, .field select, .field textarea{
+  width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font-size:14px;
+}
+.modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+
+@media (max-width: 760px){
+  .form-grid{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  
+  <div class="topbar">
+    <div>
+      <h1>🚦 Triagem e Fila Inteligente</h1>
+      <div class="subtitle">Organize por urgência, mude as janelas de horário arrastando ou usando os botões rápidos.</div>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" onclick="window.location.href='index.html'">⬅ Voltar ao Início</button>
+      <button class="btn" onclick="abrirModalNovo()">+ Novo Atendimento</button>
+      <button class="btn success" onclick="salvarTudo()">💾 Salvar Alterações</button>
+    </div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="label">Total em Fila</div><div class="value" id="mTotal">0</div></div>
+    <div class="metric"><div class="label">🚨 Alta Prioridade</div><div class="value" id="mAlta">0</div></div>
+    <div class="metric"><div class="label">⏰ Turno Normal (08h-18h)</div><div class="value" id="mNormal">0</div></div>
+    <div class="metric"><div class="label">⚡ Janela Extra (18h-19h)</div><div class="value" id="mExtra">0</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="filters">
+      <div>
+        <label>Buscar Atendimento</label>
+        <input id="fBusca" placeholder="Cliente, moto, mecânico, OBS..." oninput="render()" />
+      </div>
+      <div>
+        <label>Filtrar Mecânico</label>
+        <select id="fResp" onchange="render()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label>Filtrar Gravidade</label>
+        <select id="fPrio" onchange="render()">
+          <option value="">Todas</option>
+          <option value="alta">🚨 Alta / Urgência</option>
+          <option value="media">⚡ Média / Moderado</option>
+          <option value="baixa">📅 Baixa / Rotina</option>
+        </select>
+      </div>
+      <div>
+        <label>Ordenar Por</label>
+        <select id="fOrder" onchange="render()">
+          <option value="prioridade">Gravidade + Horário</option>
+          <option value="horario">Horário do Agendamento</option>
+          <option value="cliente">Nome do Cliente</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="badge red">Borda Vermelha = Urgente</span>
+      <span class="badge amber">Borda Amarela = Moderado</span>
+      <span class="badge green">Borda Verde = Rotina</span>
+    </div>
+  </div>
+
+  <div class="board">
+    
+    <section class="column">
+      <div class="column-header">
+        <div>
+          <div class="column-title">📋 Em Triagem</div>
+          <div class="column-sub">Aguardando definição de horário</div>
+        </div>
+        <span class="badge-contador" id="countTriagem">0</span>
+      </div>
+      <div class="dropzone" id="col-triagem" data-slot="triagem"></div>
+    </section>
+
+    <section class="column">
+      <div class="column-header">
+        <div>
+          <div class="column-title">🕗 Turno Normal</div>
+          <div class="column-sub">Janela das 08:00 às 18:00</div>
+        </div>
+        <span class="badge-contador" id="countNormal">0</span>
+      </div>
+      <div class="dropzone" id="col-normal" data-slot="08-18"></div>
+    </section>
+
+    <section class="column">
+      <div class="column-header">
+        <div>
+          <div class="column-title">🌙 Janela Extra / Encaixes</div>
+          <div class="column-sub">Janela das 18:00 às 19:00</div>
+        </div>
+        <span class="badge-contador" id="countExtra">0</span>
+      </div>
+      <div class="dropzone" id="col-extra" data-slot="18-19"></div>
+    </section>
+
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2 id="modalTitle">Novo Atendimento</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label>Cliente</label>
+        <input id="mCliente" />
+      </div>
+      <div class="field">
+        <label>Telefone</label>
+        <input id="mTelefone" />
+      </div>
+      <div class="field">
+        <label>Moto</label>
+        <input id="mMoto" />
+      </div>
+      <div class="field">
+        <label>Modelo / Placa</label>
+        <input id="mModelo" />
+      </div>
+      <div class="field">
+        <label>Mecânico Responsável</label>
+        <input id="mResp" />
+      </div>
+      <div class="field">
+        <label>Data</label>
+        <input id="mData" type="date" />
+      </div>
+      <div class="field">
+        <label>Horário</label>
+        <input id="mHora" type="time" />
+      </div>
+      <div class="field">
+        <label>Janela de Destino</label>
+        <select id="mSlot">
+          <option value="triagem">Triagem</option>
+          <option value="08-18">Turno Normal (08:00 às 18:00)</option>
+          <option value="18-19">Janela Extra (18:00 às 19:00)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Prioridade / Gravidade</label>
+        <select id="mPrio">
+          <option value="media">Média (Moderado)</option>
+          <option value="alta">Alta (Urgente)</option>
+          <option value="baixa">Baixa (Rotina)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tempo Estimado (minutos)</label>
+        <input id="mDuracao" type="number" min="0" step="5" value="60" />
+      </div>
+      <div class="field full">
+        <label>Serviço / Observações Importantes</label>
+        <textarea id="mObs" rows="3"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn success" onclick="salvarModal()">Salvar Registro</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'oficina';
+const TRIAGE_KEY = 'oficina_triagem_v2';
+
+let oficina = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+let triagem = JSON.parse(localStorage.getItem(TRIAGE_KEY)) || [];
+let editId = null;
+
+function uid(){
+  return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+}
+
+// Junta e sincroniza os dados antigos garantindo consistência
+function normalizarDadosBase(){
+  const existentes = new Set(triagem.map(i => i.osRef || i.id));
+  oficina.forEach(item => {
+    const ref = item.id || `${item.cliente||''}-${item.dataAgendada||''}-${item.horaAgendada||''}`;
+    if (existentes.has(ref)) return;
+
+    triagem.push({
+      id: uid(),
+      osRef: ref,
+      cliente: item.cliente || '',
+      telefone: item.telefone || '',
+      moto: item.moto || '',
+      modelo: [item.modelo, item.km ? item.km + ' KM' : ''].filter(Boolean).join(' / '),
+      responsavel: item.responsavel || '',
+      data: toISODate(item.dataAgendada) || new Date().toISOString().slice(0,10),
+      hora: item.horaAgendada || '',
+      prioridade: item.status === 'andamento' ? 'alta' : 'media',
+      status: item.status || 'agendado',
+      slot: item.faixaHorario || inferirSlot(item.horaAgendada),
+      duracao: 60,
+      valor: Number(item.valor || 0),
+      observacao: (item.servicos || []).map(s => s.nome).join(', '),
+      criadoEm: item.data || new Date().toISOString()
+    });
+    existentes.add(ref);
+  });
+
+  // Atualiza propriedades faltantes nos registros da triagem
+  triagem.forEach(item => {
+    if(!item.slot) item.slot = 'triagem';
+    if(!item.prioridade) item.prioridade = 'media';
+  });
+
+  salvarTudo(false);
+}
+
+function inferirSlot(hora){
+  if (!hora) return 'triagem';
+  const [h] = hora.split(':').map(Number);
+  if (isNaN(h)) return 'triagem';
+  return h >= 18 ? '18-19' : '08-18';
+}
+
+function toISODate(str){
+  if (!str) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)){
+    const [dd,mm,yyyy] = str.split('/');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) ? str : '';
+}
+
+function salvarTudo(deveRenderizar = true){
+  localStorage.setItem(TRIAGE_KEY, JSON.stringify(triagem));
+  if (deveRenderizar) render();
+}
+
+function abrirModalNovo(){
+  editId = null;
+  document.getElementById('modalTitle').textContent = 'Novo Atendimento';
+  limparModal();
+  document.getElementById('modalBackdrop').style.display = 'flex';
+}
+
+function abrirModalEditar(id){
+  const item = triagem.find(x => x.id === id);
+  if (!item) return;
+  editId = id;
+  document.getElementById('modalTitle').textContent = 'Editar Atendimento';
+  document.getElementById('mCliente').value = item.cliente || '';
+  document.getElementById('mTelefone').value = item.telefone || '';
+  document.getElementById('mMoto').value = item.moto || '';
+  document.getElementById('mModelo').value = item.modelo || '';
+  document.getElementById('mResp').value = item.responsavel || '';
+  document.getElementById('mData').value = item.data || '';
+  document.getElementById('mHora').value = item.hora || '';
+  document.getElementById('mSlot').value = item.slot || 'triagem';
+  document.getElementById('mPrio').value = item.prioridade || 'media';
+  document.getElementById('mDuracao').value = item.duracao || 60;
+  document.getElementById('mObs').value = item.observacao || '';
+  document.getElementById('modalBackdrop').style.display = 'flex';
+}
+
+function limparModal(){
+  ['mCliente','mTelefone','mMoto','mModelo','mResp','mData','mHora','mObs'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mSlot').value = 'triagem';
+  document.getElementById('mPrio').value = 'media';
+  document.getElementById('mDuracao').value = 60;
+}
+
+function fecharModal(){
+  document.getElementById('modalBackdrop').style.display = 'none';
+}
+
+function salvarModal(){
+  const payload = {
+    id: editId || uid(),
+    cliente: document.getElementById('mCliente').value.trim(),
+    telefone: document.getElementById('mTelefone').value.trim(),
+    moto: document.getElementById('mMoto').value.trim(),
+    modelo: document.getElementById('mModelo').value.trim(),
+    responsavel: document.getElementById('mResp').value.trim(),
+    data: document.getElementById('mData').value,
+    hora: document.getElementById('mHora').value,
+    slot: document.getElementById('mSlot').value,
+    prioridade: document.getElementById('mPrio').value,
+    duracao: Number(document.getElementById('mDuracao').value || 60),
+    observacao: document.getElementById('mObs').value.trim(),
+    status: 'agendado'
+  };
+
+  if (!payload.cliente) { alert('Informe o nome do cliente.'); return; }
+
+  const idx = triagem.findIndex(x => x.id === payload.id);
+  if (idx >= 0) triagem[idx] = { ...triagem[idx], ...payload };
+  else { payload.criadoEm = new Date().toISOString(); triagem.unshift(payload); }
+
+  salvarTudo();
+  fecharModal();
+}
+
+function moverViaBotao(id) {
+  const item = triagem.find(x => x.id === id);
+  if (!item) return;
+  
+  if (item.slot === 'triagem') {
+    item.slot = '08-18';
+  } else if (item.slot === '08-18') {
+    item.slot = '18-19';
+    item.prioridade = 'alta'; // Força urgência automática ao mover para a janela extra
+  } else {
+    item.slot = 'triagem';
+    item.prioridade = 'media';
+  }
+  salvarTudo();
+}
+
+function excluirItem(id){
+  if (!confirm('Remover este atendimento definitivo da triagem?')) return;
+  triagem = triagem.filter(x => x.id !== id);
+  salvarTudo();
+}
+
+function aplicarFiltros(lista){
+  const busca = document.getElementById('fBusca').value.trim().toLowerCase();
+  const resp = document.getElementById('fResp').value;
+  const prio = document.getElementById('fPrio').value;
+
+  return lista.filter(item => {
+    if (item.status === 'concluido') return false; // limpa concluídos do fluxo dinâmico
+    const palha = [item.cliente, item.moto, item.modelo, item.observacao, item.responsavel].join(' ').toLowerCase();
+    if (busca && !palha.includes(busca)) return false;
+    if (resp && item.responsavel !== resp) return false;
+    if (prio && item.prioridade !== prio) return false;
+    return true;
+  });
+}
+
+function ordenarLista(lista){
+  const mode = document.getElementById('fOrder').value;
+  const pesos = { alta: 1, media: 2, baixa: 3 };
+  return [...lista].sort((a,b) => {
+    if (mode === 'cliente') return (a.cliente || '').localeCompare(b.cliente || '');
+    if (mode === 'horario') return (a.hora || '99:99').localeCompare(b.hora || '99:99');
+    
+    const pr = (pesos[a.prioridade] || 9) - (pesos[b.prioridade] || 9);
+    return pr !== 0 ? pr : (a.hora || '99:99').localeCompare(b.hora || '99:99');
+  });
+}
+
+function popularResponsaveis(){
+  const select = document.getElementById('fResp');
+  const atual = select.value;
+  const nomes = [...new Set(triagem.map(i => i.responsavel).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">Todos</option>' + nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+  select.value = atual;
+}
+
+function makeCard(item){
+  const prioClass = item.prioridade || 'media';
+  const labelTxt = prioClass === 'alta' ? '🚨 Urgente' : (prioClass === 'baixa' ? '📅 Rotina' : '⚡ Moderado');
+  const labelBadge = `<span class="badge ${prioClass === 'alta' ? 'red' : (prioClass === 'baixa' ? 'green' : 'amber')}">${labelTxt}</span>`;
+  
+  let labelMover = '🔄 Mover p/ Turno Normal';
+  if(item.slot === '08-18') labelMover = '🔄 Mover p/ Janela Extra (18h)';
+  if(item.slot === '18-19') labelMover = '🔄 Enviar de volta p/ Triagem';
+
+  const dParts = item.data ? item.data.split('-') : [];
+  const dataFormatada = dParts.length === 3 ? `${dParts[2]}/${dParts[1]}/${dParts[0]}` : '-';
+
+  return `
+    <article class="card ${prioClass}" draggable="true" data-id="${item.id}">
+      <div class="card-header">
+        <div>
+          <div class="client">${item.cliente || 'Sem cliente'}</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:2px;">👨‍🔧 ${item.responsavel || 'Mecânico Não Definido'}</div>
+        </div>
+      </div>
+
+      <div class="badges">${labelBadge}</div>
+
+      <div class="meta">
+        <div>🏍️ <b>Veículo:</b> ${item.moto || '-'} ${item.modelo ? '• ' + item.modelo : ''}</div>
+        <div>📅 <b>Agendado:</b> ${dataFormatada} ${item.hora ? 'às ' + item.hora : ''}</div>
+        <div>⏱️ <b>Previsão:</b> ${item.duracao || 60} min</div>
+        ${item.observacao ? `<div style="margin-top:4px; border-top:1px dashed #e5e7eb; padding-top:4px;">📝 ${item.observacao}</div>` : ''}
+      </div>
+
+      <div class="card-actions">
+        <button class="btn-mov-rapido" onclick="moverViaBotao('${item.id}')">${labelMover}</button>
+        <button onclick="abrirModalEditar('${item.id}')">✏️ Editar</button>
+        <button onclick="excluirItem('${item.id}')" style="color:var(--red)">🗑️ Excluir</button>
+      </div>
+    </article>
+  `;
+}
+
+function render(){
+  popularResponsaveis();
+  const lista = ordenarLista(aplicarFiltros(triagem));
+
+  const colTriagem = document.getElementById('col-triagem');
+  const colNormal = document.getElementById('col-normal');
+  const colExtra = document.getElementById('col-extra');
+  
+  const tri = lista.filter(i => i.slot === 'triagem');
+  const nor = lista.filter(i => i.slot === '08-18');
+  const ext = lista.filter(i => i.slot === '18-19');
+
+  colTriagem.innerHTML = tri.length ? tri.map(makeCard).join('') : '<div class="empty">Nenhum atendimento na triagem.</div>';
+  colNormal.innerHTML = nor.length ? nor.map(makeCard).join('') : '<div class="empty">Nenhum atendimento neste turno.</div>';
+  colExtra.innerHTML = ext.length ? ext.map(makeCard).join('') : '<div class="empty">Nenhum encaixe planejado.</div>';
+
+  document.getElementById('countTriagem').textContent = tri.length;
+  document.getElementById('countNormal').textContent = nor.length;
+  document.getElementById('countExtra').textContent = ext.length;
+
+  document.getElementById('mTotal').textContent = lista.length;
+  document.getElementById('mAlta').textContent = lista.filter(i => i.prioridade === 'alta').length;
+  document.getElementById('mNormal').textContent = nor.length;
+  document.getElementById('mExtra').textContent = ext.length;
+
+  habilitarDragAndDrop();
+}
+
+function habilitarDragAndDrop(){
+  document.querySelectorAll('.card[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      card.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  });
+
+  document.querySelectorAll('.dropzone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const item = triagem.find(x => x.id === id);
+      if (!item) return;
+      
+      item.slot = zone.dataset.slot;
+      if(item.slot === '18-19') item.prioridade = 'alta'; 
+      salvarTudo();
+    });
+  });
+}
+
+// Inicia os dados e a tela
+normalizarDadosBase();
+render();
+</script>
+</body>
+</html>
