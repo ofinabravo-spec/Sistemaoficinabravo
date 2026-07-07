@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Custo Geral</title>
-<button class="btn-voltar" onclick="window.location.href='index.html'">
-⬅️ Voltar
-</button>
 
 <style>
 *{
@@ -31,6 +28,7 @@ body{
     padding:20px;
     border-radius:10px;
     box-shadow:0 2px 8px rgba(0,0,0,.1);
+    margin-bottom: 20px;
 }
 
 h1{
@@ -50,170 +48,161 @@ button{
     border:none;
     border-radius:6px;
     cursor:pointer;
+    font-weight:bold;
 }
 
-.btn-add{
-    background:#2563eb;
-    color:white;
-}
+.btn-add { background:#16a34a; color:white; width:100%; padding:12px; margin-top:5px; }
+.btn-voltar { background:#374151; color:white; display:block; text-align:center; text-decoration:none; width:100%; padding:12px; margin-bottom:20px; border-radius:6px; }
 
-.btn-del{
-    background:#dc2626;
-    color:white;
-}
-
-.total{
+.total-box{
     margin-top:20px;
     font-size:20px;
     font-weight:bold;
+    color:#dc2626;
+    text-align:right;
+}
+
+.lista{
+    margin-top:20px;
 }
 
 .item{
+    background:#f9fafb;
+    padding:15px;
+    border-radius:6px;
+    margin-bottom:10px;
+    border-left:4px solid #dc2626;
     display:flex;
     justify-content:space-between;
     align-items:center;
-    background:#f9fafb;
-    padding:12px;
-    border-radius:8px;
-    margin-top:10px;
-    border:1px solid #e5e7eb;
 }
 
-.info{
-    flex:1;
-}
+.info strong{ font-size:16px; }
+.info small{ color:#6b7280; }
+.info .valor { display:block; color:#dc2626; font-weight:bold; margin-top:4px; }
 
-.valor{
-    font-weight:bold;
-    color:#dc2626;
-}
-
-h2{
-    margin-top:30px;
-    margin-bottom:10px;
-}
+.btn-del{ background:#dc2626; color:white; padding:6px 12px; font-size:12px; }
+.loading { text-align: center; color: #666; font-style: italic; padding: 10px; }
 </style>
 </head>
+
 <body>
 
 <div class="container">
 
+<a href="index.html" class="btn-voltar">⬅️ Voltar ao Dashboard</a>
+
 <div class="card">
-
-<h1>💸 Custo Geral</h1>
-
-<input type="text" id="descricao" placeholder="Descrição do custo">
-
-<input type="number" id="valor" placeholder="Valor" step="0.01">
-
-<button class="btn-add" onclick="adicionar()">
-Adicionar Custo
-</button>
-
-<div class="total">
-Total de Custos: <span id="total">R$ 0,00</span>
+    <h1>💸 Custos e Despesas Gerais</h1>
+    <input id="descricao" placeholder="Descrição do gasto (ex: Aluguel, Peças...)">
+    <input id="valor" type="number" step="0.01" placeholder="Valor (R$)">
+    <button class="btn-add" onclick="adicionarCusto()">➕ Adicionar Saída</button>
 </div>
 
-<h2>Histórico</h2>
-
-<div id="historico"></div>
-
+<div class="card">
+    <h2>📋 Histórico de Despesas (Nuvem)</h2>
+    <div id="listaCustos">
+        <p class="loading">Buscando lançamentos...</p>
+    </div>
+    <div class="total-box" id="totalGeral">Total: R$ 0,00</div>
 </div>
 
 </div>
 
 <script>
+// Conexão apontando para a aba 'custos' da sua planilha
+const API_URL = "https://sheetdb.io/api/v1/550s3xju33qqi?sheet=custos";
+let custos = [];
 
-let custos = JSON.parse(localStorage.getItem("custosGerais")) || []
-
-function moeda(v){
-    return Number(v).toLocaleString("pt-BR",{
-        style:"currency",
-        currency:"BRL"
-    })
+function carregarCustos() {
+    document.getElementById("listaCustos").innerHTML = '<p class="loading">Atualizando valores...</p>';
+    fetch(API_URL)
+        .then(res => res.json())
+        .then(data => {
+            custos = data.map(item => ({
+                descricao: item.descricao || "",
+                valor: parseFloat(item.valor) || 0,
+                data: item.data || ""
+            }));
+            atualizarTela();
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById("listaCustos").innerHTML = '<p class="loading" style="color:red;">Erro ao atualizar despesas.</p>';
+        });
 }
 
-function salvar(){
-    localStorage.setItem(
-        "custosGerais",
-        JSON.stringify(custos)
-    )
-}
+function adicionarCusto() {
+    const descricao = document.getElementById("descricao").value.trim();
+    const valor = parseFloat(document.getElementById("valor").value);
 
-function adicionar(){
-
-    let descricao =
-    document.getElementById("descricao").value.trim()
-
-    let valor =
-    parseFloat(document.getElementById("valor").value)
-
-    if(!descricao || !valor){
-        alert("Preencha descrição e valor.")
-        return
+    if(!descricao || !valor) {
+        alert("Preencha a descrição e o valor corretamente.");
+        return;
     }
 
-    custos.push({
-        descricao,
-        valor,
-        data:new Date().toLocaleString("pt-BR")
+    const novoCusto = {
+        descricao: descricao,
+        valor: valor,
+        data: new Date().toLocaleString("pt-BR")
+    };
+
+    fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [novoCusto] })
     })
-
-    salvar()
-    atualizar()
-
-    document.getElementById("descricao").value=""
-    document.getElementById("valor").value=""
+    .then(res => res.json())
+    .then(() => {
+        document.getElementById("descricao").value = "";
+        document.getElementById("valor").value = "";
+        carregarCustos();
+    })
+    .catch(err => alert("Erro ao salvar custo: " + err));
 }
 
-function excluir(index){
-
-    if(confirm("Excluir este custo?")){
-        custos.splice(index,1)
-        salvar()
-        atualizar()
+function excluirCusto(index) {
+    if(confirm("Excluir definitivamente esta despesa?")) {
+        const descCusto = custos[index].descricao;
+        document.getElementById("listaCustos").innerHTML = '<p class="loading">Removendo da nuvem...</p>';
+        
+        // Deleta filtrando pela descrição
+        fetch(`${API_URL}&descricao=${descCusto}`, { method: 'DELETE' })
+            .then(() => {
+                alert("Custo removido!");
+                carregarCustos();
+            })
+            .catch(err => alert("Erro ao deletar: " + err));
     }
 }
 
-function atualizar(){
+function atualizarTela() {
+    let html = "";
+    let total = 0;
 
-    let html = ""
-    let total = 0
-
-    custos.forEach((item,index)=>{
-
-        total += Number(item.valor)
-
+    custos.forEach((item, index) => {
+        total += item.valor;
         html += `
         <div class="item">
-
             <div class="info">
                 <strong>${item.descricao}</strong><br>
-                <small>${item.data}</small><br>
-                <span class="valor">
-                    ${moeda(item.valor)}
-                </span>
+                <small>📅 ${item.data}</small><br>
+                <span class="valor">${moeda(item.valor)}</span>
             </div>
+            <button class="btn-del" onclick="excluirCusto(${index})">Excluir</button>
+        </div>`;
+    });
 
-            <button
-            class="btn-del"
-            onclick="excluir(${index})">
-            Excluir
-            </button>
-
-        </div>
-        `
-    })
-
-    document.getElementById("historico").innerHTML =
-        html || "<p>Nenhum custo cadastrado.</p>"
-
-    document.getElementById("total").innerText =
-        moeda(total)
+    document.getElementById("listaCustos").innerHTML = html || "<p class='loading'>Nenhum custo registrado.</p>";
+    document.getElementById("totalGeral").innerText = "Total: " + moeda(total);
 }
 
-atualizar()
+function moeda(v) {
+    return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
+// Inicializa puxando do Google Sheets
+carregarCustos();
 </script>
 
 </body>
